@@ -11,7 +11,7 @@ import { resolveGrokQualityModel } from "./imageModels.js";
 import { prepareImageExecution } from "./providers/execution/index.js";
 import { checkImageExecutionAdmission } from "./providers/execution/admission.js";
 import { readNaiOptions } from "./naiOptions.js";
-import { isNonRetryableGenerationError, normalizeGenerationFailure, type UpstreamErr } from "./generationErrors.js";
+import { isNonRetryableGenerationError, laSuCoDuongTruyen, normalizeGenerationFailure, type UpstreamErr } from "./generationErrors.js";
 import { logEvent, logError } from "./logger.js";
 import { errInfo } from "./errInfo.js";
 import type { RuntimeContext } from "./runtimeContext.js";
@@ -320,9 +320,17 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
         },
       } : undefined);
       let resultFormat = activeProvider === "grok" || activeProvider === "agy" || activeProvider === "grok-api" || activeProvider === "gemini-api" || activeProvider === "atlascloud" || activeProvider === "minimax" ? "jpeg" : format;
+      // Co anh dau vao thi khong thu lai: bi tu choi thi thu lai cung bi tu
+      // choi, ma van tinh tien mot luot nua.
       const maxAttempts = inputImageCount > 0 ? 1 : 2;
+      // Tru mot truong hop: duong truyen dut. Luc do chua co anh nao, chua ai
+      // tu choi gi, va mot chuoi wf dang chay bi chet han theo mot su co mang
+      // thoang qua - de no chay tiep dung hon la bat nguoi dung bam lai tu dau.
+      let conLuotDutMang = 1;
+      let lanThu = 0;
       let lastErr: UpstreamErr | null = null;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      for (let attempt = 0; ; attempt++) {
+        lanThu = attempt + 1;
         try {
           logEvent("node", "attempt", {
             requestId,
@@ -361,18 +369,22 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
           lastErr = asUpstream(e);
           if (isNonRetryableGenerationError(lastErr)) break;
         }
-        if (attempt + 1 < maxAttempts) {
-          logEvent("node", "retry", {
-            requestId,
-            attempt: attempt + 1,
-            operation,
-            parentNodeId,
-            clientNodeId,
-            errorCode: lastErr?.code,
-            errorEventType: lastErr?.eventType,
-            errorEventCount: lastErr?.eventCount,
-          });
-        }
+        const dutMang = laSuCoDuongTruyen(lastErr);
+        const conLuot = attempt + 1 < maxAttempts || (dutMang && conLuotDutMang > 0);
+        if (!conLuot) break;
+        if (attempt + 1 >= maxAttempts) conLuotDutMang--;
+        logEvent("node", "retry", {
+          requestId,
+          attempt: attempt + 1,
+          operation,
+          parentNodeId,
+          clientNodeId,
+          errorCode: lastErr?.code,
+          errorEventType: lastErr?.eventType,
+          errorEventCount: lastErr?.eventCount,
+          // Phan biet luot thu lai vi dut mang voi luot thu lai thong thuong.
+          dutDuongTruyen: dutMang,
+        });
       }
       if (!b64) {
         const finalErr = normalizeGenerationFailure(lastErr, {
@@ -396,7 +408,7 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
           diagnosticReason: lastErr?.diagnosticReason,
           retryKind: lastErr?.retryKind,
           referencesDroppedOnRetry: lastErr?.referencesDroppedOnRetry,
-          attempts: maxAttempts,
+          attempts: lanThu,
           outerHttpAlreadyCommitted: res.headersSent,
           sseErrorSent: streamResponse,
         });

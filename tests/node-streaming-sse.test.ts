@@ -62,6 +62,8 @@ describe("Node route SSE streaming", () => {
   let appServer;
   let baseUrl;
   let oauthBodies = [];
+  let dutLanDau = 0;
+  let dutLuonLuon = 0;
 
   before(async () => {
     rootDir = await mkdtemp(join(tmpdir(), "ima2-node-stream-"));
@@ -75,6 +77,28 @@ describe("Node route SSE streaming", () => {
       if (text.includes("empty ref node")) {
         writeEmptyOauthSse(res);
         return;
+      }
+      if (text.includes("dut mai khong thoi")) {
+        dutLuonLuon++;
+        res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8" });
+        res.write(`data: ${JSON.stringify({ type: "response.created" })}
+
+`,
+          () => setTimeout(() => res.socket.destroy(), 20));
+        return;
+      }
+      if (text.includes("dut giua chung")) {
+        dutLanDau++;
+        if (dutLanDau === 1) {
+          // Dau phan hoi da ve, mot su kien da ra, roi dut. Khong phai 5xx,
+          // khong phai tu choi - chi la duong truyen chet giua chung.
+          res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8" });
+          res.write(`data: ${JSON.stringify({ type: "response.created" })}
+
+`,
+            () => setTimeout(() => res.socket.destroy(), 20));
+          return;
+        }
       }
       writeOauthSse(res, { includePartial: !!req.body?.tools?.[1]?.partial_images });
     });
@@ -166,6 +190,66 @@ describe("Node route SSE streaming", () => {
     assert.match(body.image, /^data:image\/png;base64,/);
     assert.equal(body.revisedPrompt, "revised");
     assert.equal(oauthBodies[0].tools[1].partial_images, undefined);
+  });
+
+  it("thu lai mot lan khi luong dut giua chung, ke ca luot sinh co anh dau vao", async () => {
+    // Loi that: mot chuoi wf chet han o node thu tu vi luong dut mot lan.
+    // Luot sinh co anh dau vao khong thu lai (bi tu choi thi thu lai cung bi
+    // tu choi), nhung dut duong truyen thi chua ai tu choi gi ca.
+    oauthBodies = [];
+    dutLanDau = 0;
+    const ref = Buffer.from("ref").toString("base64");
+    const res = await fetch(`${baseUrl}/api/node/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parentNodeId: null,
+        prompt: "dut giua chung",
+        quality: "medium",
+        size: "1024x1024",
+        format: "png",
+        moderation: "low",
+        requestId: "req_dut_luong",
+        sessionId: "s_1",
+        clientNodeId: "nc_dut_luong",
+        references: [ref],
+      }),
+    });
+
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.match(body.image, /^data:image\/png;base64,/);
+    assert.equal(oauthBodies.length, 2, "phai goi lai dung mot lan");
+  });
+
+  it("dut giua chung thi bao la dut giua chung, khong bao la khong goi duoc", async () => {
+    // Log cu ghi "failed before receiving a response" cho ca hai truong hop,
+    // nen doc log khong biet la chua goi duoc hay da chay nua chung roi chet.
+    oauthBodies = [];
+    dutLuonLuon = 0;
+    const res = await fetch(`${baseUrl}/api/node/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parentNodeId: null,
+        prompt: "dut mai khong thoi",
+        quality: "medium",
+        size: "1024x1024",
+        format: "png",
+        moderation: "low",
+        requestId: "req_dut_mai",
+        sessionId: "s_1",
+        clientNodeId: "nc_dut_mai",
+        references: [Buffer.from("ref").toString("base64")],
+      }),
+    });
+
+    const body = await res.json();
+    assert.equal(res.status, 502);
+    assert.equal(body.error.code, "NETWORK_FAILED");
+    assert.match(body.error.message, /stream ended before the image arrived/);
+    assert.doesNotMatch(body.error.message, /before receiving a response/);
+    assert.equal(dutLuonLuon, 2, "van phai thu lai dung mot lan roi moi chiu thua");
   });
 
   it("does not retry image-input node requests after an empty image response", async () => {

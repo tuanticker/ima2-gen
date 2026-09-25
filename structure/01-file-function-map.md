@@ -176,7 +176,7 @@ scope/revision/identity reconciliation shared by polling and reload actions.
 | `lib/codexDetect.ts` | 154 | Codex OAuth session detection helper |
 | `lib/packageCli.ts` | 54 | Package-local dependency CLI resolution and Node invocation contract |
 | `lib/errorClassify.ts` | 110 | Upstream/OAuth error classifier for stable error codes, including provider validation errors |
-| `lib/generationErrors.ts` | 250 | Generation error normalization, retry classification, status mapping |
+| `lib/generationErrors.ts` | 262 | Generation error normalization, retry classification, status mapping |
 | `lib/historyList.ts` | 200 | History reconstruction from generated assets, sidecars, embedded XMP metadata fallback, session-aware rows |
 | `lib/videoContinuity.ts` | 193 | Video active-prompt guard, generated video sidecar lineage read/normalize/append, max-4 continuity retention, planner context formatting |
 | `lib/videoFrameExtract.ts` | 100 | Generated-dir-safe MP4 validation and ffmpeg frame extraction for video frame/analyze/continue workflows |
@@ -204,7 +204,7 @@ scope/revision/identity reconciliation shared by polling and reload actions.
 | `lib/multimodePipeline.ts` | 522 | Multimode streaming pipeline, persistence, cancellation, and partial timeout |
 | `lib/comparisonMatrix.ts` | 77 | Prompt-locked comparison axes: deterministic cartesian expansion, 9-cell cost cap, varying-axis labels |
 | `lib/comparisonRunner.ts` | 111 | Per-cell generation orchestrator with bounded concurrency, isolated failures, single-cell retry, and two-level cancel |
-| `lib/nodeGeneration.ts` | 539 | Node admission and execution facade, caller-owned retry, persistence, and SSE publication |
+| `lib/nodeGeneration.ts` | 551 | Node admission and execution facade, caller-owned retry, persistence, and SSE publication |
 | `lib/nodeValidation.ts` | 49 | Node prompt, references, and moderation validation |
 | `lib/oauthProxy/streams.ts` | 233 | SSE/event-stream helpers and safe stream diagnostics |
 | `lib/oauthProxy/prompts.ts` | 158 | Prompt assembly with injected `SAFETY_INTENT_POLICY` from `lib/promptSafetyPolicy.ts` |
@@ -214,7 +214,7 @@ scope/revision/identity reconciliation shared by polling and reload actions.
 | `lib/oauthProxy/types.ts` | 10 | Shared OAuth proxy types (re-exported from `index`) |
 | `lib/promptSafetyPolicy.ts` | 3 | `SAFETY_INTENT_POLICY` constant: 3-line intent policy injected by oauthProxy/prompts and the API-key Responses adapter |
 | `lib/responsesImageAdapter.ts` | 6 | Compatibility re-exports of the three OpenAI operations; existing agent/sprite imports remain valid |
-| `lib/responsesTransport.ts` | 240 | Responses endpoint/auth/readiness, redacted errors, abort/timeout and JSON/SSE parser boundary |
+| `lib/responsesTransport.ts` | 248 | Responses endpoint/auth/readiness, redacted errors, abort/timeout and JSON/SSE parser boundary |
 | `lib/providers/adapters/openaiTypes.ts` | 29 | Original positional-operation reference/options types, unchanged optional fields |
 | `lib/providers/adapters/openaiOperations.ts` | 235 | Actual OpenAI generate/edit/multimode operation bodies and reference normalization |
 | `lib/providers/adapters/openaiExecution.ts` | 142 | Typed four-surface OpenAI owner, classic retry and native callback/result mapping |

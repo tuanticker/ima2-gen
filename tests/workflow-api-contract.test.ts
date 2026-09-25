@@ -270,8 +270,37 @@ describe("workflow API contracts", () => {
       assert.equal(body.error.code, "FAKE_FAILED");
       // Node "sau" an anh cua node vua hong - chay tiep chi ton tien de ra rac.
       assert.deepEqual(ghiNhan.map((g) => g.than.clientNodeId), ["canh"]);
-      assert.equal(body.run.buoc[1].trangThai, "cho");
+      assert.equal(body.run.buoc[1].trangThai, "bo-qua");
+      assert.match(String(body.run.buoc[1].loi), /mot node truoc no da hong/);
     }, new Set(["canh"]));
+  });
+
+  it("WFAPI-05b mot nhanh hong khong keo theo cac nhanh khong lien quan", async () => {
+    // Loi that: mot luot 7 node chet han o node thu tu vi duong truyen dut mot
+    // lan, trong khi ba node con lai chi treo vao node MAC DO da xong tu truoc.
+    const phien = store.createSession({ title: "hai nhanh roi nhau" }) as { id: string };
+    store.saveGraph(phien.id, {
+      nodes: [node("start", "bat-dau"), node("goc", "canh", "anh goc"),
+        node("nhanh-hong", "canh", "nhanh hong"), node("nhanh-lanh", "canh", "nhanh lanh"),
+        node("end", "ket-thuc")],
+      edges: [{ id: "e0", source: "start", target: "goc" },
+        { id: "e1", source: "goc", target: "nhanh-hong" },
+        { id: "e2", source: "goc", target: "nhanh-lanh" },
+        { id: "e3", source: "nhanh-hong", target: "end" }],
+      expectedVersion: null,
+    });
+    await voiApi(async ({ base, ghiNhan }) => {
+      const { body } = await goi(base, `/api/wf/${phien.id}/start`, "POST", {});
+      assert.equal(body.run.trangThai, "hong");
+      // Nhanh lanh VAN phai duoc goi, va no la node cuoi cung duoc goi.
+      assert.deepEqual(ghiNhan.map((g) => g.than.clientNodeId), ["goc", "nhanh-hong", "nhanh-lanh"]);
+      const theoId = Object.fromEntries(body.run.buoc.map((b: { nodeId: string }) => [b.nodeId, b]));
+      assert.equal(theoId["goc"].trangThai, "xong");
+      assert.equal(theoId["nhanh-hong"].trangThai, "hong");
+      assert.equal(theoId["nhanh-lanh"].trangThai, "xong");
+      // Loi cua luot chay van chi vao dung node da hong that.
+      assert.equal(body.error.nodeId, "nhanh-hong");
+    }, new Set(["nhanh-hong"]));
   });
 
   it("WFAPI-06 node VIDEO va node GOP VIDEO di dung cong cua chung", async () => {

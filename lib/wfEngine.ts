@@ -321,6 +321,33 @@ export function noiDungNode(node: WfNode, ts: Pick<ThamSoChay, "nodes">): GhiDeN
   };
 }
 
+/**
+ * Node nay co treo vao mot node da hong khong.
+ *
+ * Di nguoc len theo canh, xuyen qua ca cac node moc, vi mot node moc nam giua
+ * hai viec that van la mot mat xich. Do thi da duoc `timChuoiChay` kiem nen
+ * khong co vong, nhung van giu `daXet` cho chac.
+ */
+function treoVaoNodeHong(
+  nodeId: string,
+  edges: readonly WfEdge[],
+  hong: ReadonlySet<string>,
+): boolean {
+  const daXet = new Set<string>([nodeId]);
+  const hangDoi = [nodeId];
+  while (hangDoi.length) {
+    const hienTai = hangDoi.pop()!;
+    for (const e of edges) {
+      if (e.target !== hienTai) continue;
+      if (hong.has(e.source)) return true;
+      if (daXet.has(e.source)) continue;
+      daXet.add(e.source);
+      hangDoi.push(e.source);
+    }
+  }
+  return false;
+}
+
 /** Mo ta mot khuon ma khong chay: dung cho tuyen GET va cho o API tren node. */
 export function moTaKhuon(sessionId: string, startNodeId: string) {
   const { nodes, edges } = docGraph(sessionId);
@@ -543,10 +570,23 @@ export async function chayKhuon(
     // van khong he bi sua.
     const tsChay: ThamSoChay = { ...ts, nodes: { ...ts.nodes }, inputs: { ...ts.inputs } };
     const anhThem: Record<string, string[]> = {};
+    // Node da hong, va node phai bo qua vi treo vao mot node da hong. Mot su co
+    // o mot nhanh khong con giet ca luot chay: cac nhanh khac van di den cuoi.
+    const khongConDung = new Set<string>();
     for (const buoc of luot.buoc) {
       if (huy.aborted) {
         luot.trangThai = "da-huy";
         break;
+      }
+      if (treoVaoNodeHong(buoc.nodeId, edges, khongConDung)) {
+        khongConDung.add(buoc.nodeId);
+        buoc.trangThai = "bo-qua";
+        buoc.xongLuc = Date.now();
+        buoc.loi = "bo qua: mot node truoc no da hong";
+        capNhat(luot, WF_SU_KIEN.buoc, {
+          nodeId: buoc.nodeId, trangThai: buoc.trangThai, loi: buoc.loi,
+        });
+        continue;
       }
       buoc.trangThai = "dang-chay";
       buoc.batDauLuc = Date.now();
@@ -577,20 +617,38 @@ export async function chayKhuon(
         buoc.trangThai = huy.aborted ? "bo-qua" : "hong";
         buoc.xongLuc = Date.now();
         buoc.loi = err.message;
-        luot.trangThai = huy.aborted ? "da-huy" : "hong";
-        luot.loi = { code: err.code, message: err.message, nodeId: buoc.nodeId };
-        if (!huy.aborted) {
-          logError("wf", "node_failed", err, { runId: luot.id, nodeId: buoc.nodeId, code: err.code });
-        }
+        // Giu loi DAU TIEN: do moi la cai gay ra chuoi bo qua dang sau.
+        if (!luot.loi) luot.loi = { code: err.code, message: err.message, nodeId: buoc.nodeId };
         capNhat(luot, WF_SU_KIEN.buoc, {
           nodeId: buoc.nodeId, trangThai: buoc.trangThai, loi: err.message,
         });
-        return luot;
+        if (huy.aborted) {
+          luot.trangThai = "da-huy";
+          break;
+        }
+        khongConDung.add(buoc.nodeId);
+        logError("wf", "node_failed", err, { runId: luot.id, nodeId: buoc.nodeId, code: err.code });
       }
     }
 
     if (luot.trangThai === "da-huy") {
       luot.loi = { code: "WF_CANCELED", message: "luot chay da bi huy" };
+      return luot;
+    }
+
+    if (khongConDung.size) {
+      luot.trangThai = "hong";
+      // Van tra ve nhung gi da ra duoc: mot nhanh hong khong lam cac anh kia
+      // bien mat, va nguoi goi can biet minh dang co gi trong tay.
+      luot.ketQua = thuKetQua(ts.sessionId, chuoi.ketThuc, raNode);
+      logEvent("wf", "run_partial", {
+        runId: luot.id,
+        sessionId: ts.sessionId,
+        xong: daXong(luot),
+        tong: luot.buoc.length,
+        hong: luot.buoc.filter((b) => b.trangThai === "hong").length,
+        boQua: luot.buoc.filter((b) => b.trangThai === "bo-qua").length,
+      });
       return luot;
     }
 

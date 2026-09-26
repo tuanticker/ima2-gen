@@ -41,10 +41,10 @@ export const PROMPT_BOC_TRANG_PHUC =
   + "Look at the reference photograph(s) and extract EVERY garment and accessory the person is wearing. "
   + "Lay each piece out flat and separately on the white background, reproducing each one exactly as it "
   + "appears in the reference: same colour, same pattern, same fabric texture, same cut, same length. "
-  + "Do not invent items that are not in the reference, and do not leave any out. Arrange the pieces "
+  + "Reproduce exactly the set of items in the reference - all of them, and only them. Arrange the pieces "
   + "neatly with clear space around each item. Clean e-commerce product photography, soft even shadowless "
-  + "lighting, sharp focus, photorealistic, pure white seamless background, no people, no mannequin, "
-  + "no hangers, no text, no watermark.";
+  + "lighting, sharp focus, photorealistic, pure white seamless background, every piece lying empty and "
+  + "unworn on the paper, the white background showing through each neckline and sleeve.";
 
 export const VAI_TRO: Record<VaiTroNode, MoTaVaiTro> = {
   // Hai moc nam o hai dau danh sach vi trong khuon chung cung nam o hai dau.

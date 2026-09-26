@@ -48,10 +48,10 @@ const PROMPT_BOC_DO =
   + "Look at the reference photograph(s) and extract EVERY garment and accessory the person is wearing. "
   + "Lay each piece out flat and separately on the white background, reproducing each one exactly as it "
   + "appears in the reference: same colour, same pattern, same fabric texture, same cut, same length. "
-  + "Do not invent items that are not in the reference, and do not leave any out. Arrange the pieces "
+  + "Reproduce exactly the set of items in the reference - all of them, and only them. Arrange the pieces "
   + "neatly with clear space around each item. Clean e-commerce product photography, soft even shadowless "
-  + "lighting, sharp focus, photorealistic, pure white seamless background, no people, no mannequin, "
-  + "no hangers, no text, no watermark.";
+  + "lighting, sharp focus, photorealistic, pure white seamless background, every piece lying empty and "
+  + "unworn on the paper, the white background showing through each neckline and sleeve.";
 
 /** Khoa nhan dang + khoa tung mon do giu mau rieng. Dung o MAC DO va moi CANH. */
 const KHOA =
@@ -419,8 +419,8 @@ const CONCEPTS: Concept[] = [
       + " lighting, plain light grey seamless background, photorealistic, head to feet.",
     dacTrung: "a professional photo studio",
     boiCanh: "a professional photo studio with a plain warm-grey seamless paper backdrop, the floor the same"
-      + " tone as the wall with no visible seam, one large softbox at 45 degrees and a white bounce card"
-      + " filling the shadow side, no props, no furniture.",
+      + " tone as the wall, the join between them smoothed away, one large softbox at 45 degrees and a"
+      + " white bounce card filling the shadow side, the backdrop bare from edge to edge.",
     duoi: "Commercial e-commerce lookbook photography, even flattering light, true-to-life colour, 85mm"
       + " lens, photorealistic, sharp on the garment.",
     canh: [

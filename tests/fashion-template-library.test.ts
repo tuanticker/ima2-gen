@@ -129,10 +129,16 @@ describe("kho khuon thoi trang", () => {
   });
 
   it("TP-12 khong cau phu dinh nao trong prompt cac khuon", () => {
-    // Nhac mot tu la keo theo no, KE CA khi da phu dinh: "no text" keo chu vao.
+    // Nhac mot tu la keo theo no, KE CA khi da phu dinh: "no text" keo chu
+    // vao, "no mannequin" keo ma-no-canh vao giua tam flat lay.
+    //
+    // Phai quet CA node BOC DO: vong truoc no bi loc ra khoi danh sach, va
+    // no dung la node duy nhat con sot cau phu dinh.
+    const PHU_DINH = /\bno (text|watermark|people|mannequin|hangers|props|furniture|accessories)\b/i;
     for (const k of khuonThoiTrang) {
-      for (const n of nodesCua(k).filter((x) => ["canh", "mac-do", "mau"].includes(x.data?.vaiTro))) {
-        assert.doesNotMatch(String(n.data.prompt), /\bno text\b|\bno watermark\b/i, `${k.name}/${n.id}`);
+      for (const n of nodesCua(k).filter((x) => viecCuaNode(x) !== "moc")) {
+        const khop = PHU_DINH.exec(String(n.data.prompt));
+        assert.equal(khop, null, `${k.name}/${n.id}: con "${khop?.[0]}"`);
       }
     }
   });

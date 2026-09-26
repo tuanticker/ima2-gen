@@ -117,9 +117,12 @@ describe("kho khuon thoi trang", () => {
   it("TP-11 khung hinh goi ten thu NAM TRONG KHUNG, khong dung tu chi co canh", () => {
     // "full body / waist-up / close portrait" chay rat khong on dinh. Goi ten
     // thu phai nam trong khung thi mo hinh buoc phai danh cho cho chung.
-    const CO_CANH = /\b(full body|waist-up|close portrait|three-quarter length|whole figure)\b/i;
+    // Gach noi cung phai bat: "Full-body" tung lot qua vi lop tu chi co
+    // "full body" co khoang trang. Va phai quet ca node MAU - no cung ta mot
+    // khung hinh, va no la node da tung hong cam.
+    const CO_CANH = /\b(full[- ]body|waist[- ]up|close portrait|three[- ]quarter length|whole figure|head to (feet|shoes|toe))\b/i;
     for (const k of khuonThoiTrang) {
-      for (const n of nodesCua(k).filter((x) => x.data?.vaiTro === "canh")) {
+      for (const n of nodesCua(k).filter((x) => ["canh", "mau", "mac-do"].includes(x.data?.vaiTro))) {
         const dang = String(n.data.prompt).split("LOCATION (keep identical in every shot):")[0];
         const khop = CO_CANH.exec(dang);
         assert.equal(khop, null, `${k.name}/${n.data.label}: con dung "${khop?.[0]}"`);

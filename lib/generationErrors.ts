@@ -32,6 +32,11 @@ export interface UpstreamErr {
   upstreamCode?: string;
   upstreamType?: string;
   upstreamParam?: string;
+  /** Cau upstream noi (da lam sach) khi luot sinh khong ra duoc anh nao. */
+  upstreamMessage?: string;
+  /** Ma/kieu loi cua chinh muc ve anh, khi upstream bao `failed` ma khong kem cau nao. */
+  upstreamItemCode?: string;
+  upstreamItemType?: string;
   code?: string;
   message?: string;
   status?: number;
@@ -135,6 +140,18 @@ export function isNonRetryableGenerationError(err: UpstreamErr | null | undefine
   if (SAFETY_CODES.has(code)) return false;
   const status = Number(err?.status);
   return code === "INVALID_REQUEST" || code === "OAUTH_IMAGE_TIMEOUT" || (Number.isFinite(status) && status >= 400 && status < 500);
+}
+
+/**
+ * Su co duong truyen, khong phai mo hinh tu choi.
+ *
+ * Khac han cac lan hong khac: khong co anh nao duoc sinh ra, khong co ai tu
+ * choi gi, va lan sau goi lai thi thuong xong. Dang duy nhat dang duoc thu lai
+ * ke ca voi mot luot sinh CO anh dau vao - noi chung nhung luot do khong thu
+ * lai vi bi tu choi thi thu lai cung bi tu choi, con day thi khong lien quan.
+ */
+export function laSuCoDuongTruyen(err: UpstreamErr | null | undefined): boolean {
+  return errorCodeFrom(err) === "NETWORK_FAILED";
 }
 
 function copyEmptyResponseMetadata(target: any, source: UpstreamErr | null | undefined) {

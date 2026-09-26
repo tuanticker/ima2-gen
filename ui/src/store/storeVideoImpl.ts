@@ -58,11 +58,14 @@ export async function runVideoGenerateImpl(
   nodeId: ClientNodeId | undefined,
   set: StoreSet,
   get: StoreGet,
+  /** Node VIDEO muon loi ta cua node CANH khi o prompt cua no de trong. */
+  taThayThe?: string,
 ): Promise<void> {
   const node = nodeId ? get().graphNodes.find((n) => n.id === nodeId) : null;
   const refs = node ? (node.data.referenceImages ?? []) : get().referenceImages;
   const singleRefAsSource = refs.length === 1 && get().videoSingleRefMode === "image-to-video";
-  const userPrompt = node ? node.data.prompt.trim() : composePrompt(get().prompt, get().insertedPrompts);
+  const userPrompt = (taThayThe ?? "").trim()
+    || (node ? node.data.prompt.trim() : composePrompt(get().prompt, get().insertedPrompts));
   if (!userPrompt.trim()) {
     get().showToast(ACTIVE_VIDEO_PROMPT_GUIDANCE, true);
     return;
@@ -82,7 +85,13 @@ export async function runVideoGenerateImpl(
   let parentVideoFrameRef: string | undefined;
   let parentVideoContinuity: VideoContinuityLineage | null = node ? node.data.videoContinuity ?? null : get().videoContinuityLineage;
   let continueFromVideo: string | undefined;
-  if (node && refs.length === 0 && node.data.parentServerNodeId) {
+  // Anh nen duoc doc KE CA khi node video dang co anh dinh.
+  //
+  // Truoc day dieu kien la `refs.length === 0`, nen chi can dinh mot anh vao
+  // node video la anh nen bi bo han: may chu nhan duoc mot tham chieu va sinh
+  // ra mot nguoi mau khac, du prompt van noi "keep the exact same face as the
+  // base image". Anh nen la canh nguoi dung muon lam dong, no thang.
+  if (node && node.data.parentServerNodeId) {
     const parentNode = get().graphNodes.find(
       (n) => n.data.serverNodeId === node.data.parentServerNodeId,
     );
@@ -115,6 +124,19 @@ export async function runVideoGenerateImpl(
       }
     }
   }
+  // Cai dat rieng cua node thang cai dat chung o bang ben phai: mot khuon co
+  // the co hai node video khac ti le nhau, va nguoi dung da noi ro o node nao.
+  const cdNode = node?.data.caiDatVideo ?? null;
+  const coAnhNen = Boolean(parentSourceFilename || parentVideoFrameRef);
+  // "tham-chieu": anh nen chi la goi y, khong khoa khung dau. Gui no o o tham
+  // chieu (kem anh dinh, neu co) chu khong phai o anh nguon.
+  //
+  // Chi ap cho anh nen la ANH. Cha la mot clip thi duong duy nhat la noi tiep
+  // (`continueFromVideo`), khong co o tham chieu nao de nhet mot doan phim vao.
+  const nenLamThamChieu = Boolean(parentSourceFilename) && cdNode?.anhNen === "tham-chieu";
+  // Noi ra chu khong bo im: nguoi dung vua dinh mot anh vao node video va no
+  // khong duoc dung cho lan nay.
+  if (coAnhNen && refs.length > 0) get().showToast(t("video.baseWinsOverRefs"));
 
   const startedAt = Date.now();
   const autoSelectStartedAt = startedAt;
@@ -151,14 +173,22 @@ export async function runVideoGenerateImpl(
       // more can only be references. v3.8.0 forced every count into the reference slot,
       // which silently took first-frame workflows away from anyone dragging in a single
       // photo — devlog/_plan/260820_grok15_multi_reference_video/060_single_ref_mode_restore.md
-      referenceImages: refs.length > 0 && !singleRefAsSource ? refs : undefined,
-      sourceImage: singleRefAsSource ? refs[0] : (refs.length > 0 ? undefined : parentVideoFrameRef),
-      sourceFilename: refs.length === 0 && !parentVideoFrameRef ? parentSourceFilename : undefined,
+      // May chu chi lam MOT trong hai: mot khung dau (image-to-video) hoac mot
+      // danh sach tham chieu (reference-to-video). Co anh nen thi anh nen
+      // thang, anh dinh o node video de lai cho lan sau.
+      referenceImages: (refs.length > 0 && !singleRefAsSource && !coAnhNen) || (nenLamThamChieu && refs.length > 0)
+        ? refs
+        : undefined,
+      ...(nenLamThamChieu && parentSourceFilename ? { referenceFilenames: [parentSourceFilename] } : {}),
+      sourceImage: nenLamThamChieu
+        ? undefined
+        : coAnhNen ? parentVideoFrameRef : (singleRefAsSource ? refs[0] : (refs.length > 0 ? undefined : parentVideoFrameRef)),
+      sourceFilename: !parentVideoFrameRef && !nenLamThamChieu ? parentSourceFilename : undefined,
       continueFromVideo,
       continuityLineage: parentVideoContinuity,
-      duration: get().videoDuration,
-      resolution: get().videoResolution,
-      aspectRatio: get().videoAspectRatio,
+      duration: cdNode?.duration ?? get().videoDuration,
+      resolution: cdNode?.resolution ?? get().videoResolution,
+      aspectRatio: cdNode?.aspectRatio ?? get().videoAspectRatio,
       // Sent only when a voice is selected: the route treats an absent field and an
       // empty array differently, and an empty array would advertise reference-to-video
       // for a request that has nothing to reference.
@@ -190,6 +220,10 @@ export async function runVideoGenerateImpl(
                 data: {
                   ...n.data,
                   serverNodeId: result.filename.replace(/\.[^.]+$/, ""),
+                  // Video thay mat anh o imageUrl. Giu lai anh nguon de con
+                  // sinh lai video duoc - khong giu thi node thanh video la
+                  // cut duong, vi animate can mot ANH lam dau vao.
+                  videoSourceUrl: n.data.videoSourceUrl ?? n.data.imageUrl,
                   imageUrl: result.url,
                   status: "ready" as const,
                   error: undefined,

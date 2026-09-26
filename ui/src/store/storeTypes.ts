@@ -132,7 +132,24 @@ export type ImageNodeData = {
   clientId: ClientNodeId;
   serverNodeId: string | null;
   parentServerNodeId: string | null;
+  /** Cha phu: chi lay ANH cua tung node lam tham chieu, khong phai anh goc dem di sua. */
+  extraParentServerNodeIds?: string[];
   prompt: string;
+  /** Nhan do nguoi dung dat cho node, hien canh ma node tren canvas. */
+  label?: string;
+  /** Anh goc truoc khi node bi video thay cho - de sinh lai video duoc. */
+  videoSourceUrl?: string | null;
+  /** Vai tro trong khuon: mau / trang-phuc / mac-do / canh / video / gop-*. Xem lib/vaiTroNode.ts */
+  vaiTro?: string;
+  /**
+   * Node BOC DO: cau ta bo do doc duoc tu flat lay cua no.
+   *
+   * Nam NGOAI prompt: node phia sau dien o trong `{{TRANG_PHUC}}` tu day luc
+   * sinh, nen prompt trong graph khong bao gio mang mot bo do cu.
+   */
+  moTaTrangPhuc?: string | null;
+  /** Node GOP: thu tu media do nguoi dung sap xep, luu bang danh sach url. */
+  thuTuGop?: string[];
   imageUrl: string | null;
   status: ImageNodeStatus;
   pendingRequestId: string | null;
@@ -152,6 +169,21 @@ export type ImageNodeData = {
   provider?: string | null;
   referenceImages?: string[];
   video?: { duration?: number; resolution?: string; aspectRatio?: string; topic?: string } | null;
+  /**
+   * Cai dat RIENG cua mot node VIDEO.
+   *
+   * Bang dieu khien ben phai la cai dat chung cho ca phien, nhung mot khuon co
+   * the co hai node video khac ti le nhau (mot doc cho reel, mot ngang), va khi
+   * chay qua API thi khong co ai ngoi chon o bang do ca - mac dinh cua may chu
+   * (auto / 480p / 5s) khong phai cai nguoi dung muon.
+   */
+  caiDatVideo?: {
+    aspectRatio?: string;
+    resolution?: string;
+    duration?: number;
+    /** Anh nen lam KHUNG DAU (mac dinh) hay chi lam THAM CHIEU. */
+    anhNen?: "khung-dau" | "tham-chieu";
+  } | null;
   videoContinuity?: VideoContinuityLineage | null;
 };
 
@@ -159,6 +191,17 @@ export type GraphNode = FlowNode<ImageNodeData>;
 export type GraphEdge = FlowEdge;
 
 export type GraphHistoryEntry = import("../lib/nodeHistory").GraphSnapshotEntry;
+
+/** Mot luot chay khuon dang duoc may chu chay, theo doi qua kenh su kien. */
+export type WfApiLuotChay = {
+  runId: string;
+  sessionId: string;
+  startNodeId: string;
+  /** Node dang toi luot, hoac null giua hai buoc. */
+  nodeHienTai: string | null;
+  daXong: number;
+  tong: number;
+};
 
 export type ToastEntry = { message: string; error: boolean; id: number; createdAt: number };
 export type ToastState = ToastEntry | null;
@@ -435,12 +478,31 @@ export type AppState = PresetState & ReferenceTraySlice & {
   nodeSelectionMode: boolean;
   nodeBatchRunning: boolean;
   nodeBatchStopping: boolean;
+  /**
+   * Luot chay ca mot khuon (BAT DAU -> KET THUC). Rieng voi luot chay theo o
+   * danh dau: khuon tu biet duong di nen khong dung chung co nodeBatch*.
+   */
+  wfDangChay: string | null;
+  wfNodeHienTai: string | null;
+  wfDungLai: boolean;
+  wfDaXong: number;
+  wfTongViec: number;
+  /**
+   * Cac luot chay do MAY CHU dieu khien (goi vao qua API), tra cuu theo ma luot.
+   * Giao dien khong khoi dong chung, no chi nghe va bay ra - nen day la trang
+   * thai RIENG, khong tron voi wfDangChay cua luot bam tay.
+   */
+  wfApiChay: Record<string, WfApiLuotChay>;
   toggleNodeSelectionMode: () => void;
   selectAllGraphNodes: () => void;
   selectNodeGraph: (clientId: ClientNodeId, additive: boolean) => void;
   clearNodeSelection: () => void;
   runNodeBatch: (mode: NodeBatchMode) => Promise<void>;
   cancelNodeBatch: () => void;
+  chayWorkflow: (startClientId: ClientNodeId) => Promise<void>;
+  dungWorkflow: () => void;
+  nhanSuKienWf: (suKien: string, duLieu: Record<string, unknown>) => void;
+  napWfApiDangChay: (sessionId: string | null) => Promise<void>;
   addRootNode: () => ClientNodeId;
   createRootNodeFromHistoryItem: (item: GenerateItem) => ClientNodeId;
   addChildNode: (parentClientId: ClientNodeId) => ClientNodeId;
@@ -458,6 +520,10 @@ export type AppState = PresetState & ReferenceTraySlice & {
     targetHandle?: string | null,
   ) => void;
   updateNodePrompt: (clientId: ClientNodeId, prompt: string) => void;
+  /** Dat vai tro node; vai tro co prompt co dinh thi ghi luon prompt do. */
+  datVaiTroNode: (clientId: ClientNodeId, vaiTro: string) => void;
+  /** Va mot mieng du lieu vao node (thu tu gop, imageUrl sau khi ghep...). */
+  updateNodeData: (clientId: ClientNodeId, patch: Partial<ImageNodeData>) => void;
   addNodeReferences: (clientId: ClientNodeId, files: File[]) => Promise<void>;
   addNodeReferenceDataUrl: (clientId: ClientNodeId, dataUrl: string) => void;
   addNodeReferenceFromUrl: (clientId: ClientNodeId, src: string, filename?: string) => Promise<void>;
@@ -548,7 +614,8 @@ export type AppState = PresetState & ReferenceTraySlice & {
   setVideoTopic: (topic: string) => void;
   setVideoContinuityLineage: (lineage: VideoContinuityLineage | null) => void;
   activeVideoRefCount: () => number;
-  runVideoGenerate: (nodeId?: string) => Promise<void>;
+  /** taThayThe: loi ta dung thay cho prompt cua node (node VIDEO muon loi ta cua node CANH). */
+  runVideoGenerate: (nodeId?: string, taThayThe?: string) => Promise<void>;
   animateImage: (filename: string, prompt?: string) => Promise<boolean>;
   setReasoningEffort: (e: ReasoningEffort) => void;
   setNaiOption: <K extends keyof NaiOptions>(key: K, value: NaiOptions[K]) => void;

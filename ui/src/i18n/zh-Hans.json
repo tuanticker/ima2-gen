@@ -359,7 +359,20 @@
     "grokApi": "Grok API",
     "grokApiBody": "使用 xAI OAuth 会话直接调用 api.x.ai：强制搜索、Grok 4.5 英语图像和文本工具规划，然后是 xAI Images API。附加参考使用 xAI 图像编辑，因此保留了 i2i 上下文。",
     "openAccount": "开设账户设置",
-    "mcp": {"loading":"正在检查 MCP 就绪状态…","error":"无法读取 MCP 就绪状态","missing":"提供商不可用","disabled":"提供商已停用","disconnected":"提供商未连接","locked":"提供商执行已锁定","default":"提供商默认模型","model-missing":"所选模型不可用","model-locked":"所选模型执行已锁定","ready":"上次连接检查时可用。","refresh":"刷新","observed":"检查于 {time}"}
+    "mcp": {
+      "loading": "正在检查 MCP 就绪状态…",
+      "error": "无法读取 MCP 就绪状态",
+      "missing": "提供商不可用",
+      "disabled": "提供商已停用",
+      "disconnected": "提供商未连接",
+      "locked": "提供商执行已锁定",
+      "default": "提供商默认模型",
+      "model-missing": "所选模型不可用",
+      "model-locked": "所选模型执行已锁定",
+      "ready": "上次连接检查时可用。",
+      "refresh": "刷新",
+      "observed": "检查于 {time}"
+    }
   },
   "generate": {
     "button": "产生",
@@ -692,7 +705,72 @@
     "retry": "重试",
     "retryTitle": "重试这个 node 的生成",
     "errorAuthCta": "检查您的帐户或 API 密钥，然后重新生成。",
-    "errorFixCta": "调整提示或引用，然后再次生成。"
+    "errorFixCta": "调整提示或引用，然后再次生成。",
+    "zoomImage": "查看大图",
+    "placeholderLeft": "提示词中还有未填写的占位符 {slot}，请先填写再生成",
+    "copyId": "复制节点 ID",
+    "outfitFilled": "已将服装描述填入 {n} 个节点",
+    "promptLocked": "该节点角色的固定提示词，无需修改",
+    "rolePick": "节点角色",
+    "roleNone": "— 角色 —",
+    "needImageForVideo": "该节点没有可用于生成视频的图像",
+    "working": "生成中…",
+    "merge": "合并视频",
+    "mergeTitle": "将列表合并为一个视频",
+    "mergeEmpty": "连接场景或附加文件",
+    "mergeDone": "合并完成",
+    "mergeUp": "上移",
+    "mergeDown": "下移",
+    "wfRun": "▶ 运行工作流",
+    "wfRunTitle": "从这里开始，依次运行到 END 标记的每个节点",
+    "wfStop": "停止",
+    "wfStopping": "停止中…",
+    "wfRunning": "运行中 {done}/{total}",
+    "wfSteps": "{count} 个步骤",
+    "wfStartHint": "工作流起点",
+    "wfEndHint": "工作流终点",
+    "wfEmpty": "两个标记之间没有可运行的节点",
+    "wfParentRequired": "有 {count} 个节点依赖工作流外尚未产生结果的节点",
+    "wfMergeNeedTwo": "合并节点至少需要两段素材",
+    "wfDone": "工作流完成 — {done}/{total}",
+    "wfStopped": "在 {node} 中断 — 已完成 {done}/{total}",
+    "wfCanceled": "已取消 — 已完成 {done}/{total}",
+    "wfErr": {
+      "khong-phai-moc-dau": "此节点不是 START 标记",
+      "thieu-ket-thuc": "下游没有 END 标记 — 连上才算完整的工作流",
+      "vong-lap": "工作流形成了回路"
+    },
+    "wfApiInputs": "输入：{names}",
+    "wfApiCopy": "复制 curl",
+    "wfApiRunning": "API 运行 {done}/{total}",
+    "wfApiStopTitle": "停止由 API 触发的运行",
+    "wfApiHistoryEmpty": "尚未运行过",
+    "wfApiCopyNode": "复制",
+    "wfApiCopyNodeTitle": "复制只覆盖这个节点一次的请求内容",
+    "wfApiNoPrompt": "（没有提示词）",
+    "wfApiNodeImages": "{count} 张图",
+    "wfApiWait": "等待结果",
+    "wfApiStream": "每完成一步返回一条",
+    "wfApiAsync": "立即返回 runId",
+    "wfApiStatus": "查询一次运行",
+    "wfApiStreamRun": "接上进行中的运行",
+    "wfApiSecCalls": "API · {count} 种调用",
+    "wfApiSecInputs": "输入 · {count}",
+    "wfApiSecNodes": "节点 · {count}",
+    "wfApiSecRuns": "最近的运行",
+    "videoSettings": "视频设置",
+    "videoSettingsTitle": "仅应用于此视频节点",
+    "videoInherit": "面板默认",
+    "videoAspect": "比例",
+    "videoResolution": "分辨率",
+    "videoDuration": "时长",
+    "videoBase": "基底图像",
+    "videoBaseFirstFrame": "首帧",
+    "videoBaseReference": "仅作参考",
+    "bocDoNeedRef": "未附图片 — 这个节点会自己编一套。附上实际照片才会照着做。",
+    "wfSize": "整个流程比例",
+    "wfSizeNone": "按节点／面板",
+    "outfitNotReadYet": "请先运行拆解节点 — 尚未读取服装描述。"
   },
   "nodeBatch": {
     "selectionOn": "选择",
@@ -718,8 +796,9 @@
     "disconnect": "断开",
     "disconnectTitle": "断开选定的边",
     "disconnected": "连接已移除。",
-    "parentConflict": "node 只能有一个父连接。",
-    "cycleBlocked": "该连接会形成一个循环。"
+    "cycleBlocked": "该连接会形成一个循环。",
+    "roleBase": "原图",
+    "roleRef": "参考"
   },
   "provider": {
     "authTitle": "提供者",
@@ -916,7 +995,8 @@
     "upscaleInvalid": "无效的高档参数",
     "editVideo": "编辑视频",
     "editVideoTitle": "用提示词修改此视频（grok-imagine-video）",
-    "editVideoPrompt": "想如何修改这段视频？例如：把衣服改成红色"
+    "editVideoPrompt": "想如何修改这段视频？例如：把衣服改成红色",
+    "animateAgainTitle": "用原图重新生成 Grok 视频"
   },
   "session": {
     "switchTitle": "切换会话",
@@ -1259,7 +1339,8 @@
     "voiceSection": "语音",
     "voiceLimit": "最多 {max} 个。在提示词中以 <AUDIO_0> 指代",
     "voiceNeeds15": "仅 grok-imagine-video-1.5 支持语音",
-    "voiceCustomPlaceholder": "自定义语音 ID (/v1/custom-voices)"
+    "voiceCustomPlaceholder": "自定义语音 ID (/v1/custom-voices)",
+    "baseWinsOverRefs": "这段视频以基底图像为起点，因此节点上附加的图片未被使用。"
   },
   "sidebar": {
     "appName": "图像生成器",
@@ -2118,7 +2199,8 @@
       "addImage": "添加图片",
       "templates": "模板",
       "saveTemplate": "保存模板",
-      "branch": "分支"
+      "branch": "分支",
+      "runner": "执行器"
     },
     "empty": {
       "title": "构建图像工作流程",
@@ -2205,7 +2287,18 @@
       "saveError": "无法保存模板。",
       "renamePrompt": "重命名模板",
       "renameError": "无法重命名模板。",
-      "deleteError": "无法删除模板。"
+      "deleteError": "无法删除模板。",
+      "export": "导出",
+      "import": "导入文件",
+      "importHint": "从其他电脑导出的 .ima2-template.json 文件。",
+      "exported": "已导出“{name}”。",
+      "exportError": "无法导出模板。",
+      "imported": "已导入“{name}”。",
+      "importError": "无法导入文件。",
+      "importNotTemplate": "这不是 ima2 模板文件。",
+      "importNewerVersion": "该文件由更新的版本生成，请先更新应用。",
+      "importTooLarge": "模板文件太大。",
+      "importBadName": "文件中的模板没有可用名称。"
     },
     "palette": {
       "ariaLabel": "插入 node 命令",
@@ -2401,7 +2494,25 @@
     "refUndo": "撤消"
   },
   "comfy": {
-    "display": {"localMethod":"本地 HTTP","loading":"正在检查工作流…","refreshing":"正在更新上次观测状态…","loadFailed":"无法读取工作流目录。","appAccessRequired":"读取目录需要应用访问权限。","unavailable":"尚未确认工作流是否可用。","available":"上次检查目录时可用。","chooseWorkflow":"选择工作流","empty":"尚未注册工作流。","selectedMissing":"所选工作流已不在目录中。","selectedOffline":"上次检查时所选工作流离线。","selectedLocked":"所选工作流已锁定。","observedConnected":"上次检查时有实例响应。","lastChecked":"上次检查：{time}","refresh":"刷新","manage":"管理工作流","controlsHelp":"此面板选择图像或视频工作流。绑定决定哪些已保存的请求设置生效；选择工作流并不证明执行成功。"},
+    "display": {
+      "localMethod": "本地 HTTP",
+      "loading": "正在检查工作流…",
+      "refreshing": "正在更新上次观测状态…",
+      "loadFailed": "无法读取工作流目录。",
+      "appAccessRequired": "读取目录需要应用访问权限。",
+      "unavailable": "尚未确认工作流是否可用。",
+      "available": "上次检查目录时可用。",
+      "chooseWorkflow": "选择工作流",
+      "empty": "尚未注册工作流。",
+      "selectedMissing": "所选工作流已不在目录中。",
+      "selectedOffline": "上次检查时所选工作流离线。",
+      "selectedLocked": "所选工作流已锁定。",
+      "observedConnected": "上次检查时有实例响应。",
+      "lastChecked": "上次检查：{time}",
+      "refresh": "刷新",
+      "manage": "管理工作流",
+      "controlsHelp": "此面板选择图像或视频工作流。绑定决定哪些已保存的请求设置生效；选择工作流并不证明执行成功。"
+    },
     "workflowsTitle": "ComfyUI 工作流",
     "addTitle": "注册工作流",
     "loading": "正在加载工作流…",
@@ -2505,5 +2616,23 @@
     "resetDefaults": "恢复默认值",
     "compatTitle": "NovelAI 通道",
     "compatBody": "仅支持文生图。该通道不支持参考图、编辑与批量生成。"
+  },
+  "runner": {
+    "title": "执行器",
+    "refresh": "刷新",
+    "loading": "加载中…",
+    "close": "关闭",
+    "workflows": "工作流（{count}）",
+    "runs": "运行（{count}）",
+    "noWorkflow": "还没有工作流 — 在图上加一个 START 和一个 END 标记",
+    "noRun": "尚未运行过",
+    "steps": "{count} 个步骤",
+    "running": "{count} 个运行中",
+    "open": "打开",
+    "filterOn": "只看这个",
+    "filterOff": "全部",
+    "copyUrl": "复制网址",
+    "watch": "在画布上观看",
+    "openRun": "打开这个会话"
   }
 }

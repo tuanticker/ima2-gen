@@ -11,7 +11,7 @@ import { resolveGrokQualityModel } from "./imageModels.js";
 import { prepareImageExecution } from "./providers/execution/index.js";
 import { checkImageExecutionAdmission } from "./providers/execution/admission.js";
 import { readNaiOptions } from "./naiOptions.js";
-import { isNonRetryableGenerationError, normalizeGenerationFailure, type UpstreamErr } from "./generationErrors.js";
+import { isNonRetryableGenerationError, laSuCoDuongTruyen, normalizeGenerationFailure, type UpstreamErr } from "./generationErrors.js";
 import { logEvent, logError } from "./logger.js";
 import { errInfo } from "./errInfo.js";
 import type { RuntimeContext } from "./runtimeContext.js";
@@ -30,6 +30,11 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
     const asyncMode = body.async === true;
     const streamResponse = !asyncMode && wantsSse(req);
     const parentNodeId = (typeof body.parentNodeId === "string" ? body.parentNodeId : null);
+    // Cac cha phu, chi lay anh lam tham chieu (xem cho ghep refsForRequest ben duoi).
+    const extraParentNodeIds: string[] = Array.isArray(body.extraParentNodeIds)
+      ? body.extraParentNodeIds.filter((id: unknown): id is string =>
+          typeof id === "string" && !!id && id !== parentNodeId)
+      : [];
     const requestId = normalizeBodyRequestId(body.requestId, req.id);
     const sessionId = typeof body.sessionId === "string" ? body.sessionId : null;
     const clientNodeId = typeof body.clientNodeId === "string" ? body.clientNodeId : null;
@@ -143,7 +148,23 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
       const referenceDiagnostics = refCheck.referenceDiagnostics || [];
       const generateReferenceDiagnostics = operation === "generate" ? referenceDiagnostics : [];
       const referenceMismatchCount = generateReferenceDiagnostics.filter((ref) => ref.warnings?.includes("mime_mismatch")).length;
-      const refsForRequest = contextMode === "parent-only" ? [] : (refCheck.refDetails || refCheck.refs);
+      // Cha phu: ke thua nhieu cha that ra chi la lay ANH cua tung cha lam tham
+      // chieu. Cha dau (parentNodeId) la anh goc dem di sua; cac cha con lai duoc
+      // nap len va noi vao dau danh sach tham chieu, truoc cac ref nguoi dung dinh kem.
+      const extraParentB64: string[] = [];
+      for (const extraId of extraParentNodeIds) {
+        try {
+          const b64 = await loadParentNodeB64(ctx, extraId);
+          if (b64) extraParentB64.push(b64);
+        } catch {
+          // Cha phu mat tep thi bo qua, khong lam hong ca lan sinh.
+          logEvent("node", "extra_parent_missing", { requestId, nodeId: extraId });
+        }
+      }
+      const baseRefs = contextMode === "parent-only" ? [] : (refCheck.refDetails || refCheck.refs);
+      const refsForRequest = contextMode === "parent-only"
+        ? []
+        : [...extraParentB64.map((b64) => ({ b64 })), ...(baseRefs as unknown[])] as typeof baseRefs;
       const parentImagePresent = !!parentB64;
       const inputImageCount = (parentImagePresent ? 1 : 0) + refsForRequest.length;
       const providerReferenceLimit = deriveReferenceLimit(activeProvider, "edit");
@@ -299,9 +320,17 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
         },
       } : undefined);
       let resultFormat = activeProvider === "grok" || activeProvider === "agy" || activeProvider === "grok-api" || activeProvider === "gemini-api" || activeProvider === "atlascloud" || activeProvider === "minimax" ? "jpeg" : format;
+      // Co anh dau vao thi khong thu lai: bi tu choi thi thu lai cung bi tu
+      // choi, ma van tinh tien mot luot nua.
       const maxAttempts = inputImageCount > 0 ? 1 : 2;
+      // Tru mot truong hop: duong truyen dut. Luc do chua co anh nao, chua ai
+      // tu choi gi, va mot chuoi wf dang chay bi chet han theo mot su co mang
+      // thoang qua - de no chay tiep dung hon la bat nguoi dung bam lai tu dau.
+      let conLuotDutMang = 1;
+      let lanThu = 0;
       let lastErr: UpstreamErr | null = null;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      for (let attempt = 0; ; attempt++) {
+        lanThu = attempt + 1;
         try {
           logEvent("node", "attempt", {
             requestId,
@@ -340,18 +369,22 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
           lastErr = asUpstream(e);
           if (isNonRetryableGenerationError(lastErr)) break;
         }
-        if (attempt + 1 < maxAttempts) {
-          logEvent("node", "retry", {
-            requestId,
-            attempt: attempt + 1,
-            operation,
-            parentNodeId,
-            clientNodeId,
-            errorCode: lastErr?.code,
-            errorEventType: lastErr?.eventType,
-            errorEventCount: lastErr?.eventCount,
-          });
-        }
+        const dutMang = laSuCoDuongTruyen(lastErr);
+        const conLuot = attempt + 1 < maxAttempts || (dutMang && conLuotDutMang > 0);
+        if (!conLuot) break;
+        if (attempt + 1 >= maxAttempts) conLuotDutMang--;
+        logEvent("node", "retry", {
+          requestId,
+          attempt: attempt + 1,
+          operation,
+          parentNodeId,
+          clientNodeId,
+          errorCode: lastErr?.code,
+          errorEventType: lastErr?.eventType,
+          errorEventCount: lastErr?.eventCount,
+          // Phan biet luot thu lai vi dut mang voi luot thu lai thong thuong.
+          dutDuongTruyen: dutMang,
+        });
       }
       if (!b64) {
         const finalErr = normalizeGenerationFailure(lastErr, {
@@ -365,12 +398,17 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
           operation,
           finalCode: finishErrorCode,
           upstreamCode: lastErr?.upstreamCode || lastErr?.code,
+          // Cau upstream noi. Khong co no thi log chi con nhan cua chinh minh,
+          // va mot nhan thi khong sua duoc gi.
+          upstreamMessage: lastErr?.upstreamMessage ?? null,
+          upstreamItemCode: lastErr?.upstreamItemCode ?? null,
+          upstreamItemType: lastErr?.upstreamItemType ?? null,
           errorEventType: lastErr?.eventType,
           errorEventCount: lastErr?.eventCount,
           diagnosticReason: lastErr?.diagnosticReason,
           retryKind: lastErr?.retryKind,
           referencesDroppedOnRetry: lastErr?.referencesDroppedOnRetry,
-          attempts: maxAttempts,
+          attempts: lanThu,
           outerHttpAlreadyCommitted: res.headersSent,
           sseErrorSent: streamResponse,
         });

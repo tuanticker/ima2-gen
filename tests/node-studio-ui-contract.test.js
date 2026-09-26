@@ -123,7 +123,8 @@ describe("NC — palette and compatibility boundary", () => {
   it("publishes the exact ten React Flow port bindings", () => {
     const imageInputs = ["top", "right", "bottom", "left"].map((side) => ({
       nodeType: "imageNode", flowHandleId: `target-${side}`, logicalPortId: "image-input",
-      direction: "input", type: "image", acceptsMany: false,
+      // Nhieu cha: canh dau la anh goc, cac canh sau gop anh lam tham chieu.
+      direction: "input", type: "image", acceptsMany: true,
       equivalentHandleIds: ["target-top", "target-right", "target-bottom", "target-left"],
     }));
     const imageOutputs = ["top", "right", "bottom", "left"].map((side) => ({
@@ -154,7 +155,10 @@ describe("NC — palette and compatibility boundary", () => {
     assert.equal(canConnectPortTypes("element-notes", "image"), false);
     assert.deepEqual(canConnectPorts(refsOut, imageIn, { nodes: [], edges: [] }), { allowed: true });
     assert.equal(canConnectPorts(notesOut, imageIn, { nodes: [], edges: [] }).reason, "TYPE_MISMATCH");
-    assert.equal(canConnectPorts(imageOut, imageIn, { nodes: [], edges: [{ id: "occupied", source: "other", target: "target", sourceHandle: "source-left", targetHandle: "target-left" }] }).reason, "CARDINALITY");
+    // Cong vao anh nhan duoc nhieu nguon, nen canh thu hai KHONG con bi chan.
+    assert.deepEqual(canConnectPorts(imageOut, imageIn, { nodes: [], edges: [{ id: "occupied", source: "other", target: "target", sourceHandle: "source-left", targetHandle: "target-left" }] }), { allowed: true });
+    // Nhung cong chi nhan mot thi luat CARDINALITY van con hieu luc.
+    assert.equal(canConnectPorts(imageOut, { ...imageIn, acceptsMany: false }, { nodes: [], edges: [{ id: "occupied", source: "other", target: "target", sourceHandle: "source-left", targetHandle: "target-left" }] }).reason, "CARDINALITY");
   });
 
   it("resolves catalog ports before connecting and surfaces typed failures", () => {
@@ -198,7 +202,12 @@ describe("NB — atomic branch consumer", () => {
     assert.match(branching, /if \(applyVariant && variant\.provider\) data\.provider = variant\.provider/);
     assert.match(nodeRun, /const nodeProvider = \(typeof node\.data\.provider === "string"[\s\S]*: s\.provider\)/);
     assert.match(nodeRun, /const nodeModel = \(typeof node\.data\.model === "string"[\s\S]*: s\.imageModel\)/);
-    assert.match(nodeRun, /const size = options\.sizeOverride \?\? \(typeof node\.data\.size === "string"[\s\S]*: s\.getResolvedSize\(\)\)/);
+    // Kich thuoc rieng cua bien the (settingsPatch) van thang, va bang dieu
+    // khien van la bac cuoi. Giua hai bac do co them ke thua tu ANH NEN roi ti
+    // le cua ca khuon - xem WFSZ-01/04.
+    assert.match(nodeRun, /const size = options\.sizeOverride/);
+    assert.match(nodeRun, /\?\? \(typeof node\.data\.size === "string" && node\.data\.size \? node\.data\.size : null\)/);
+    assert.match(nodeRun, /\?\? s\.getResolvedSize\(\)/);
     assert.match(nodeRun, /postNodeGenerateStream\(\{[\s\S]*provider: nodeProvider,[\s\S]*model: nodeModel/);
   });
 });
@@ -219,6 +228,16 @@ describe("EN — element node lifecycle", () => {
     assert.match(elementNode, /<Handle type="source" id="notes"/);
   });
 
+  it("keeps the element tray collapsed until the user opens it", () => {
+    // Mo san thi khay de len mot goc canvas o moi phien, ke ca voi nguoi chua
+    // luu element nao - luc do no chi hien mot dong "chua co element".
+    assert.match(elementTray, /const \[mo, setMo\] = useState\(docDaMo\)/);
+    assert.match(elementTray, /return localStorage\.getItem\(KHOA_MO\) === "1"/);
+    // Khong nho duoc (cua so rieng tu, chan luu) van phai dong mo duoc.
+    assert.match(elementTray, /catch \{ return false; \}/);
+    assert.match(elementTray, /aria-expanded=\{mo\}/);
+  });
+
   it("restores the renderer and blocks single and batch runs for missing inputs", () => {
     assert.match(graphSave, /nodeType === "element-reference" \? "elementReferenceNode" : "imageNode"/);
     // Reload preserves unmanaged element/branch fields (spread-first mapper).
@@ -231,7 +250,7 @@ describe("EN — element node lifecycle", () => {
     assert.ok(single.indexOf("collectElementInputs(get().graphNodes, get().graphEdges, [clientId])") < single.indexOf("postNodeGenerateStream({"));
     assert.match(single, /resolveElementInputsForRun\(elementInputs, set, get\)/);
     assert.match(single, /if \(elementResolution\.ok === false\)[\s\S]*showToast[\s\S]*return null/);
-    assert.match(single, /mergeRunReferences\(node\.data\.referenceImages \?\? \[\], elementResolution\.referenceDataUrls/);
+    assert.match(single, /mergeRunReferences\(\s*\[\.\.\.\(node\.data\.referenceImages \?\? \[\]\), \.\.\.anhFlatLayCuaNode\(clientId, get\)\],/);
     const batch = section(nodeRun, "export async function runNodeBatchImpl", "\n}");
     assert.ok(batch.indexOf("collectElementInputs(get().graphNodes, get().graphEdges, candidates)") < batch.indexOf("set({ nodeBatchRunning: true"));
     assert.match(batch, /batchElementInputs\.find\(\(input\) => input\.missing\)/);
@@ -319,7 +338,7 @@ describe("EN — element node lifecycle", () => {
       "request.prompt",
     ]);
     // Merge dedupes across classic+element refs and caps at the active limit.
-    assert.match(nodeRun, /mergeRunReferences\(node\.data\.referenceImages \?\? \[\], elementResolution\.referenceDataUrls, variantRefLimit\)/);
+    assert.match(nodeRun, /mergeRunReferences\(\s*\[\.\.\.\(node\.data\.referenceImages \?\? \[\]\), \.\.\.anhFlatLayCuaNode\(clientId, get\)\],\s*elementResolution\.referenceDataUrls,/);
     assert.match(nodeRun, /effectiveReferenceLimit\(\{\s*provider: nodeProvider/);
     assert.match(nodeRun, /if \(!merged\.includes\(ref\)\) merged\.push\(ref\)/);
     assert.match(nodeRun, /if \(merged\.length >= activeLimit\) break/);

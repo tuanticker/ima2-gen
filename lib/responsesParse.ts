@@ -1,3 +1,4 @@
+import { safeDiagnosticLabel, safeDiagnosticMessage } from "./diagnosticText.js";
 import { setJobPhase } from "./inflight.js";
 import { logEvent } from "./logger.js";
 
@@ -19,6 +20,8 @@ export interface ResponseOutputSummary {
   errorCode: string | null;
   errorType: string | null;
   errorParam: string | null;
+  /** Cau upstream noi, da lam sach. Ma loi mot minh khong du de sua. */
+  errorMessage: string | null;
 }
 
 export interface ResponseDiagnostics {
@@ -41,6 +44,11 @@ export interface ResponseDiagnostics {
   imageResultCount: number;
   webSearchCallSeen: boolean;
   messageOutputSeen: boolean;
+  /** Ma va kieu loi cua muc ve anh, neu upstream co gui. */
+  upstreamErrorCode: string | null;
+  upstreamErrorType: string | null;
+  /** Cau upstream noi khi khong ra duoc anh nao, da lam sach. */
+  upstreamErrorMessage: string | null;
   outputTextChars: number;
 }
 
@@ -69,6 +77,7 @@ interface SseItem {
     code?: string;
     type?: string;
     param?: string;
+    message?: string;
   };
   content?: Array<{ type?: string; text?: string }>;
 }
@@ -89,7 +98,7 @@ interface SseData {
     output?: SseItem[];
     tool_usage?: { web_search?: { num_requests?: number } };
   };
-  error?: { code?: string };
+  error?: { code?: string; message?: string };
 }
 
 interface ParseState {
@@ -117,6 +126,7 @@ interface ParseState {
   imageResultCount: number;
   webSearchCallSeen: boolean;
   messageOutputSeen: boolean;
+  streamErrorMessage: string | null;
 }
 
 function createState(): ParseState {
@@ -145,20 +155,11 @@ function createState(): ParseState {
     imageResultCount: 0,
     webSearchCallSeen: false,
     messageOutputSeen: false,
+    streamErrorMessage: null,
   };
 }
 
-const MAX_DIAGNOSTIC_LABEL_CHARS = 120;
-const UNSAFE_DIAGNOSTIC_LABEL = /(bearer\s+|sk-[a-z0-9_-]{4,}|data:image\/|https?:\/\/|[a-z][a-z0-9+.-]*:\/\/|@|[\r\n])/i;
-const SAFE_DIAGNOSTIC_LABEL = /^[A-Za-z0-9_.:[\]-]+$/;
-
-export function safeDiagnosticLabel(value: unknown, fallback: string | null = null): string | null {
-  if (typeof value !== "string" || value.length === 0) return fallback;
-  const trimmed = value.slice(0, MAX_DIAGNOSTIC_LABEL_CHARS);
-  if (UNSAFE_DIAGNOSTIC_LABEL.test(trimmed)) return "_redacted";
-  if (!SAFE_DIAGNOSTIC_LABEL.test(trimmed)) return "_redacted";
-  return trimmed;
-}
+export { safeDiagnosticLabel, safeDiagnosticMessage } from "./diagnosticText.js";
 
 function extractSseData(block: string): string {
   let eventData = "";
@@ -247,6 +248,7 @@ function summarizeItem(eventType: string, item: SseItem): ResponseOutputSummary 
     errorCode: safeDiagnosticLabel(item.error?.code),
     errorType: safeDiagnosticLabel(item.error?.type),
     errorParam: safeDiagnosticLabel(item.error?.param),
+    errorMessage: safeDiagnosticMessage(item.error?.message),
   };
 }
 
@@ -287,6 +289,19 @@ function diagnosticsFromState(state: ParseState): ResponseDiagnostics {
     webSearchCallSeen: state.webSearchCallSeen,
     messageOutputSeen: state.messageOutputSeen,
     outputTextChars,
+    // Cau upstream noi: uu tien loi cua chinh buoc VE ANH, roi moi den cac muc
+    // khac. Khong co thi de null chu khong bia ra mot cau.
+    // Ma va kieu loi cua chinh muc ve anh. Upstream co the bao `failed` ma
+    // khong kem cau nao - luc do day la tat ca nhung gi no noi.
+    upstreamErrorCode:
+      state.outputItemSummary.find((m) => m.itemType === "image_generation_call" && m.errorCode)?.errorCode ?? null,
+    upstreamErrorType:
+      state.outputItemSummary.find((m) => m.itemType === "image_generation_call" && m.errorType)?.errorType ?? null,
+    upstreamErrorMessage:
+      state.outputItemSummary.find((m) => m.itemType === "image_generation_call" && m.errorMessage)?.errorMessage
+      ?? state.outputItemSummary.find((m) => m.errorMessage)?.errorMessage
+      ?? state.streamErrorMessage
+      ?? null,
   };
 }
 
@@ -404,6 +419,7 @@ export async function parseStream(res: Response, {
         if (typeof wsNum === "number" && wsNum > state.webSearchCalls) state.webSearchCalls = wsNum;
       }
       if (data.type === "error") {
+        state.streamErrorMessage = safeDiagnosticMessage(data.error?.message);
         throw makeStreamError(
           "Responses stream returned an error",
           safeDiagnosticLabel(data.error?.code, "RESPONSES_STREAM_ERROR") || "RESPONSES_STREAM_ERROR",

@@ -56,6 +56,13 @@
     "important": false
   },
   {
+    "file": "ui/src/index.css",
+    "atRule": null,
+    "selector": ".node-element-tray__so",
+    "expected": "var(--r-pill)",
+    "important": false
+  },
+  {
     "file": "ui/src/styles/agent-panels-composer.css",
     "atRule": null,
     "selector": ".agent-composer textarea",
@@ -1953,6 +1960,13 @@
     "important": false
   },
   {
+    "file": "ui/src/styles/node-canvas-extras.css",
+    "atRule": null,
+    "selector": ".node-template-picker__nhap button",
+    "expected": "var(--r-md)",
+    "important": false
+  },
+  {
     "file": "ui/src/styles/node-polish.css",
     "atRule": null,
     "selector": ".error-card",
@@ -2088,13 +2102,6 @@
   {
     "file": "ui/src/styles/node-workspace.css",
     "atRule": null,
-    "selector": ".image-node--pending::before,\n.image-node--reconciling::before",
-    "expected": "var(--r-xl)",
-    "important": false
-  },
-  {
-    "file": "ui/src/styles/node-workspace.css",
-    "atRule": null,
     "selector": ".in-flight-cancel",
     "expected": "50%",
     "important": false
@@ -2111,20 +2118,6 @@
     "atRule": null,
     "selector": ".in-flight-spinner",
     "expected": "50%",
-    "important": false
-  },
-  {
-    "file": "ui/src/styles/node-workspace.css",
-    "atRule": null,
-    "selector": ".node-batch-bar",
-    "expected": "var(--r-xl)",
-    "important": false
-  },
-  {
-    "file": "ui/src/styles/node-workspace.css",
-    "atRule": null,
-    "selector": ".node-batch-bar button",
-    "expected": "var(--r-lg)",
     "important": false
   },
   {
@@ -3371,6 +3364,97 @@
     "atRule": null,
     "selector": ".lan-sign-in__panel button",
     "expected": "var(--r-md)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/node-workspace.css",
+    "atRule": null,
+    "selector": ".image-node__wf-nut",
+    "expected": "var(--r-sm)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/node-workspace.css",
+    "atRule": null,
+    "selector": ".image-node__api-chep",
+    "expected": "var(--r-xs)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/node-workspace.css",
+    "atRule": null,
+    "selector": ".image-node__vid-cd-so",
+    "expected": "var(--r-pill)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/node-workspace.css",
+    "atRule": null,
+    "selector": ".image-node__vid-cd-than select",
+    "expected": "var(--r-sm)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/node-workspace.css",
+    "atRule": null,
+    "selector": ".image-node__thieu-anh",
+    "expected": "var(--r-sm)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/node-workspace.css",
+    "atRule": null,
+    "selector": ".image-node__khuon-size select",
+    "expected": "var(--r-sm)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/wf-runner.css",
+    "atRule": null,
+    "selector": ".wf-runner",
+    "expected": "var(--r-xl)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/wf-runner.css",
+    "atRule": null,
+    "selector": ".wf-runner__dau button",
+    "expected": "var(--r-sm)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/wf-runner.css",
+    "atRule": null,
+    "selector": ".wf-runner__khuon",
+    "expected": "var(--r-md)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/wf-runner.css",
+    "atRule": null,
+    "selector": ".wf-runner__nut button",
+    "expected": "var(--r-sm)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/wf-runner.css",
+    "atRule": null,
+    "selector": ".wf-runner__luot",
+    "expected": "var(--r-md)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/wf-runner.css",
+    "atRule": null,
+    "selector": ".wf-runner__mot-buoc img,\r\n.wf-runner__mot-buoc video,\r\n.wf-runner__khong-anh",
+    "expected": "var(--r-sm)",
+    "important": false
+  },
+  {
+    "file": "ui/src/styles/wf-runner.css",
+    "atRule": null,
+    "selector": ".wf-runner__dung",
+    "expected": "var(--r-sm)",
     "important": false
   }
 ]

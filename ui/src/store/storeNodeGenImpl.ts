@@ -1,6 +1,9 @@
 import type { ClientNodeId } from "../lib/graph";
 import { postNodeGenerateStream } from "../lib/api";
 import { deriveParentServerNodeIds } from "../lib/nodeGraph";
+import { canhAnhVao, locCanhAnh } from "../lib/canhAnh";
+import { dienOTrong, kichThuocCuaKhuon, kichThuocKeThua } from "../lib/chayWorkflow";
+import { dienMoTaTrangPhuc, moTaTrangPhucGanNhat, O_TRANG_PHUC } from "../lib/moTaTrangPhuc";
 import { getSelectedNodeIds } from "../lib/nodeSelection";
 import {
   getDirectUnselectedChildren,
@@ -18,6 +21,7 @@ import { effectiveReferenceLimit } from "../lib/referenceLimits";
 import { t } from "../i18n";
 import {
   type PersistedInFlight,
+  compressReferenceSource,
   stripDataUrlPrefix,
   isCanceledGenerationError,
 } from "./storeHelpers";
@@ -92,6 +96,125 @@ function mergeRunReferences(nodeRefs: string[], elementRefs: string[], activeLim
   return merged;
 }
 
+/**
+ * Danh dau lo thoi cho moi node phia sau mot node vua doi anh.
+ *
+ * Di theo CA HAI loai canh: canh base (anh nen) lan canh ref (tham chieu). Node
+ * "mac do" lay anh trang phuc lam THAM CHIEU chu khong phai anh nen, nen neu chi
+ * di theo canh base thi doi trang phuc xong no van bao "Done" voi anh cu.
+ */
+function danhDauLoThoi(
+  goc: string,
+  set: StoreSet,
+  get: StoreGet,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): void {
+  const canh = get().graphEdges;
+  const phiaSau = new Set<string>();
+  let bien = [goc];
+  while (bien.length) {
+    const tiep: string[] = [];
+    for (const id of bien) {
+      for (const e of canh) {
+        if (e.source !== id || phiaSau.has(e.target) || e.target === goc) continue;
+        phiaSau.add(e.target);
+        tiep.push(e.target);
+      }
+    }
+    bien = tiep;
+  }
+  if (!phiaSau.size) return;
+  set({
+    graphNodes: get().graphNodes.map((n) =>
+      phiaSau.has(n.id) && n.data.status === "ready"
+        ? { ...n, data: { ...n.data, status: "stale" as const, error: t("nodeBatch.staleBecauseParentChanged") } }
+        : n,
+    ),
+  });
+}
+
+/**
+ * Anh flat lay cua cac node BOC DO noi vao `clientId` bang canh THAM CHIEU.
+ *
+ * Dua theo tung luot sinh, khong dinh vao graph - giong het cach may chu lam
+ * (`anhThem` trong lib/wfEngine.ts). Dinh that vao node thi moi lan boc do lai
+ * la mot anh nua nam do, va node phia sau mang theo ca bo do cu.
+ *
+ * Canh vao DAU TIEN la anh nen dem di sua nen bo qua; tu canh thu hai tro di
+ * moi la tham chieu.
+ */
+function anhFlatLayCuaNode(clientId: ClientNodeId, get: StoreGet): string[] {
+  const nodes = get().graphNodes;
+  return canhAnhVao(get().graphEdges, nodes, clientId)
+    .slice(1)
+    .map((e) => nodes.find((n) => n.id === e.source))
+    .filter((n) => n?.data.vaiTro === "trang-phuc" && n.data.imageUrl)
+    .map((n) => n!.data.imageUrl!);
+}
+
+/**
+ * Node BOC DO gan nhat PHIA TRUOC `clientId` ma da co anh flat lay.
+ *
+ * Dung khi node phia sau can cau ta nhung chua ai doc: co anh roi thi doc duoc
+ * ngay, khong phai sinh lai anh.
+ */
+function timNodeBocDoCoAnh(clientId: ClientNodeId, get: StoreGet): ClientNodeId | null {
+  const nodes = get().graphNodes;
+  const edges = get().graphEdges;
+  const cha = new Map<string, string[]>();
+  for (const e of edges) {
+    const ds = cha.get(e.target) ?? [];
+    ds.push(e.source);
+    cha.set(e.target, ds);
+  }
+  const daQua = new Set<string>([clientId]);
+  const hang: string[] = [clientId];
+  for (let i = 0; i < hang.length; i++) {
+    for (const c of cha.get(hang[i]!) ?? []) {
+      if (daQua.has(c)) continue;
+      daQua.add(c);
+      const n = nodes.find((x) => x.id === c);
+      if (n?.data.vaiTro === "trang-phuc" && n.data.imageUrl) return c as ClientNodeId;
+      hang.push(c);
+    }
+  }
+  return null;
+}
+
+/**
+ * Node BOC DO vua sinh xong flat lay: doc ngay ra cau ta va luu LEN NODE.
+ *
+ * Cau ta nam ngoai prompt, node phia sau dien o trong `{{TRANG_PHUC}}` tu day
+ * luc sinh. Viet thang vao prompt la prompt trong graph mang mot bo do cu, doi
+ * anh trang phuc xong van ra do cu - dung cai bay da phai sua mot lan.
+ *
+ * Hong thi chi bao, khong lam hong ket qua vua sinh duoc: anh flat lay van con
+ * do, nguoi dung bam "Doc bo do" lai duoc.
+ */
+async function docBoDoSauKhiSinh(clientId: ClientNodeId, get: StoreGet): Promise<void> {
+  // Node van phai trong nhu dang BAN trong luc doc: anh da co roi nhung cau ta
+  // thi chua, ma node phia sau can chinh cau ta do.
+  get().updateNodeData(clientId, { pendingPhase: "doc-bo-do" });
+  try {
+    const st = get();
+    // KHONG dinh anh vao graph.
+    //
+    // May chu khong lam the: no dua flat lay theo tung luot chay (`anhThem`) va
+    // khong dung vao graph. Ban giao dien truoc day dinh that vao node, nen moi
+    // lan boc do lai la node phia sau co them mot anh - va giu ca anh cua bo do
+    // CU. Gio giao dien cung lay flat lay tu canh ref ngay luc sinh, xem
+    // `anhFlatLayCuaNode`.
+    const kq = await dienMoTaTrangPhuc(
+      clientId, st.graphNodes, st.graphEdges, st.updateNodePrompt,
+    );
+    get().updateNodeData(clientId, { moTaTrangPhuc: kq.moTa });
+  } catch (e) {
+    get().showToast(String((e as Error).message || e), true);
+  } finally {
+    get().updateNodeData(clientId, { pendingPhase: null });
+  }
+}
+
 export async function runGenerateNodeInPlaceImpl(
   clientId: ClientNodeId,
   options: {
@@ -124,9 +247,51 @@ export async function runGenerateNodeInPlaceImpl(
     nodeGenerationLocks.delete(clientId);
     return null;
   }
-  const { prompt, parentServerNodeId } = node.data;
+  const { parentServerNodeId } = node.data;
+  // Dien `{{TRANG_PHUC}}` tu cau ta cua node BOC DO gan nhat phia truoc. Bam
+  // GEN mot node le thi khong co buoc nao doc anh ca, va prompt trong graph co
+  // y giu nguyen o trong - khong dien thi chuoi "{{TRANG_PHUC}}" di thang len
+  // may sinh anh.
+  let moTaBoDo = moTaTrangPhucGanNhat(clientId, get().graphNodes, get().graphEdges);
+  // Chua co cau ta ma node BOC DO thi da co anh: doc ngay tai day.
+  //
+  // Truoc day chi doc sau khi SINH, nen mot khuon copy ve, boc do xong tu lan
+  // truoc (hoac tu ban cu) la ket cung: node sau doi cau ta, ma cach duy nhat
+  // de co cau ta la sinh lai chinh node boc do - ton tien ma khong them gi.
+  if (!moTaBoDo && node.data.prompt.includes(`{{${O_TRANG_PHUC}}}`)) {
+    const nguon = timNodeBocDoCoAnh(clientId, get);
+    if (nguon) {
+      // Chi doc CHU, khong dinh lai anh: anh flat lay da duoc dinh tu lan sinh
+      // node BOC DO, dinh nua la hai anh giong het trong cung mot node.
+      await docBoDoSauKhiSinh(nguon, get);
+      moTaBoDo = moTaTrangPhucGanNhat(clientId, get().graphNodes, get().graphEdges);
+    }
+  }
+  const prompt = dienOTrong(
+    node.data.prompt,
+    moTaBoDo ? { [O_TRANG_PHUC]: moTaBoDo } : {},
+  );
   if (!prompt.trim()) {
     get().showToast(t("toast.promptRequired"), true);
+    nodeGenerationLocks.delete(clientId);
+    return null;
+  }
+  // Chan o DAY chu khong o nut GEN.
+  //
+  // Da xay ra that: mot node MAC DO chay voi chuoi "{{TRANG_PHUC}}" nguyen xi
+  // trong prompt. Anh nen va anh tham chieu deu vao du, nhung LOI TA khong noi
+  // mac gi, ma chu moi la thu quyet dinh bo do - nen mo hinh tu bia ra mot bo
+  // khac han cai trong flat lay. Nut GEN co cua chan, con "Retry", "New
+  // variant" va sinh hang loat thi khong: cua phai dat o cho MOI duong deu di
+  // qua.
+  const conOTrong = /\{\{[A-Z_]+\}\}/.exec(prompt)?.[0];
+  if (conOTrong) {
+    get().showToast(
+      conOTrong === `{{${O_TRANG_PHUC}}}`
+        ? t("node.outfitNotReadYet")
+        : t("node.placeholderLeft", { slot: conOTrong }),
+      true,
+    );
     nodeGenerationLocks.delete(clientId);
     return null;
   }
@@ -143,14 +308,45 @@ export async function runGenerateNodeInPlaceImpl(
     videoModelSelected: Boolean(s.videoModelSelected),
     mcpProvider: s.mcpProvider ?? null,
   });
-  const nodeRefs = mergeRunReferences(node.data.referenceImages ?? [], elementResolution.referenceDataUrls, variantRefLimit);
+  const nodeRefsTho = mergeRunReferences(
+    [...(node.data.referenceImages ?? []), ...anhFlatLayCuaNode(clientId, get)],
+    elementResolution.referenceDataUrls,
+    variantRefLimit,
+  );
+  // Anh dinh doc lai tu may chu la DUONG DAN TEP (/generated/...), khong phai
+  // data URL - tu khi anh dinh chuyen ve may chu thi lan nao tai lai trang cung
+  // ra duong dan. May sinh anh chi nhan base64, nen phai doi o day; khong thi
+  // request bi tra ve "references[0] is not valid base64".
+  const nodeRefs: string[] = [];
+  for (const ref of nodeRefsTho) {
+    if (ref.startsWith("data:")) { nodeRefs.push(ref); continue; }
+    try {
+      nodeRefs.push(await compressReferenceSource(ref, "node-reference.png"));
+    } catch {
+      // Bao ra chu khong bo qua im lang: thieu mot anh tham chieu la ket qua
+      // khac han, ma nhin anh khong doan duoc thieu cai gi.
+      get().showToast(t("toast.currentImageLoadFailed"), true);
+    }
+  }
   const nodeModel = (typeof node.data.model === "string" && node.data.model ? node.data.model : s.imageModel) as AppState["imageModel"];
-  const size = options.sizeOverride ?? (typeof node.data.size === "string" && node.data.size ? node.data.size : s.getResolvedSize());
+  // Kich thuoc: cua rieng node -> ke thua tu ANH NEN -> ti le cua ca khuon
+  // (node BAT DAU) -> bang dieu khien. Cung thu tu voi luot chay o may chu, de
+  // bam GEN mot node va chay ca khuon ra cung mot ti le.
+  const size = options.sizeOverride
+    ?? (typeof node.data.size === "string" && node.data.size ? node.data.size : null)
+    ?? kichThuocKeThua(clientId, get().graphNodes, get().graphEdges)
+    ?? kichThuocCuaKhuon(clientId, get().graphNodes, get().graphEdges)
+    ?? s.getResolvedSize();
   const effectiveParentServerNodeId =
     options.parentServerNodeIdOverride !== undefined
       ? options.parentServerNodeIdOverride
       : parentServerNodeId;
-  const incoming = get().graphEdges.find((edge) => edge.target === clientId);
+  // Cha phu: anh cua chung duoc gui kem lam tham chieu (xem extraParentNodeIds).
+  const extraParentServerNodeIds = (node.data.extraParentServerNodeIds ?? [])
+    .filter((id) => id && id !== effectiveParentServerNodeId);
+  // Chi canh ANH moi bat buoc phai co anh cha. Canh tu node MOC chi la thu tu
+  // chay, doi no sinh anh thi node dau khuon khong bao gio chay duoc.
+  const incoming = canhAnhVao(get().graphEdges, get().graphNodes, clientId)[0];
   if (incoming && !effectiveParentServerNodeId) {
     get().showToast(t("node.parentImageRequired"), true);
     nodeGenerationLocks.delete(clientId);
@@ -205,6 +401,7 @@ export async function runGenerateNodeInPlaceImpl(
   try {
     const res = await postNodeGenerateStream({
       parentNodeId: effectiveParentServerNodeId,
+      ...(extraParentServerNodeIds.length ? { extraParentNodeIds: extraParentServerNodeIds } : {}),
       prompt,
       quality: s.quality,
       size,
@@ -293,7 +490,21 @@ export async function runGenerateNodeInPlaceImpl(
           };
         }),
       });
+      // Anh cua node vua doi -> moi node phia sau (ke ca node chi dung no lam
+      // THAM CHIEU) van dang giu ket qua lam tu anh cu. Danh dau lo thoi thay vi
+      // de chung nam im nhu the van dung: truoc day chi danh dau khi sinh hang
+      // loat, sinh mot node thi con chau khong he duoc danh dau.
+      danhDauLoThoi(clientId, set, get, t);
       graphMutated = true;
+      // Node BOC DO vua co flat lay moi -> doc ngay ra cau ta.
+      //
+      // Dat o day chu khong o nut GEN: truoc day viec doc treo vao mot nut, nen
+      // sinh lai bang "Retry" hay sinh hang loat la khong doc, va node phia sau
+      // giu nguyen o trong `{{TRANG_PHUC}}` chua ai dien.
+      // CHO doc xong, khong tha troi. Luot chay khuon lam tuan tu va doi dung
+      // cai promise nay: tha troi thi node MAC DO chay ngay trong luc dang doc,
+      // thay `moTaTrangPhuc` con trong va dung lai - dung canh da xay ra.
+      if (node.data.vaiTro === "trang-phuc") await docBoDoSauKhiSinh(clientId, get);
       if (!options.suppressToast) {
         get().showToast(t("toast.nodeCreated", { id: res.nodeId.slice(0, 8), elapsed: res.elapsed }));
       }
@@ -383,7 +594,11 @@ export async function runNodeBatchImpl(
     get().showToast(t("nodeBatch.noneSelected"), true);
     return;
   }
-  const blocked = validateBatchDependencies(get().graphNodes, get().graphEdges, selectedIds);
+  const blocked = validateBatchDependencies(
+    get().graphNodes,
+    locCanhAnh(get().graphEdges, get().graphNodes),
+    selectedIds,
+  );
   if (blocked.length > 0) {
     get().showToast(t("nodeBatch.parentRequired", { count: blocked.length }), true);
     return;
@@ -426,7 +641,7 @@ export async function runNodeBatchImpl(
         skippedCount += 1;
         continue;
       }
-      const incoming = get().graphEdges.find((e) => e.target === candidateId);
+      const incoming = canhAnhVao(get().graphEdges, get().graphNodes, candidateId)[0];
       const parentOverride = incoming
         ? latestServerNodeIdByClientId.get(incoming.source)
           ?? get().graphNodes.find((n) => n.id === candidateId)?.data.parentServerNodeId

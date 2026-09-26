@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -16,13 +16,15 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useAppStore, type GraphNode, type GraphEdge } from "../store/useAppStore";
 import { ImageNode } from "./ImageNode";
-import { NodeBatchBar } from "./NodeBatchBar";
 import { useI18n } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { ElementReferenceNode } from "./node-canvas/ElementReferenceNode";
 import { NodeCanvasEmptyState } from "./node-canvas/NodeCanvasEmptyState";
 import { NodeStudioOverlays } from "./node-canvas/NodeStudioOverlays";
 import { useNodeStudioController } from "./node-canvas/useNodeStudioController";
+import { laCanhThuTu } from "../lib/canhAnh";
+import { subscribe } from "../lib/eventChannel";
+import { WF_KENH } from "../../../lib/wfEvents.js";
 
 function NodeCanvasInner() {
   const { t } = useI18n();
@@ -41,10 +43,48 @@ function NodeCanvasInner() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const studio = useNodeStudioController(wrapperRef);
 
+  // Mot he thong khac co the goi API kich hoat khuon bat cu luc nao. Nghe kenh
+  // su kien chung de thay no chay ngay tren canvas, thay vi hoi lien tuc hay de
+  // nguoi dung tu tai lai trang moi biet.
+  const nhanSuKienWf = useAppStore((s) => s.nhanSuKienWf);
+  useEffect(
+    () => subscribe(WF_KENH, null, (suKien, du) => nhanSuKienWf(suKien, du)),
+    [nhanSuKienWf],
+  );
+
   const nodeTypes = useMemo(() => ({
     imageNode: ImageNode,
     elementReferenceNode: ElementReferenceNode,
   }), []);
+
+  // Nhan tren canh: khi mot node nhan NHIEU nguon thi vai tro tung canh khac hau:
+  // canh dau la ANH GOC dem di sua, cac canh sau chi gop ANH lam tham chieu.
+  // Nhin hai duong cong giong het nhau thi khong doan duoc, nen danh dau ra.
+  const labelledEdges = useMemo(() => {
+    const incomingCount = new Map<string, number>();
+    for (const edge of edges) {
+      // Canh tu node MOC chi dinh thu tu chay - dem no vao day thi mot node
+      // co dung mot anh cha van bi gan nhan "base/ref" nhu the co hai.
+      if (laCanhThuTu(edge, nodes)) continue;
+      incomingCount.set(edge.target, (incomingCount.get(edge.target) ?? 0) + 1);
+    }
+    const seenTarget = new Set<string>();
+    return edges.map((edge) => {
+      if (laCanhThuTu(edge, nodes)) return edge;
+      const isBase = !seenTarget.has(edge.target);
+      seenTarget.add(edge.target);
+      // Mot cha thi khong can nhan - khong co gi de nham lan.
+      if ((incomingCount.get(edge.target) ?? 0) < 2) return edge;
+      return {
+        ...edge,
+        label: isBase ? t("edge.roleBase") : t("edge.roleRef"),
+        labelBgPadding: [6, 3] as [number, number],
+        labelBgStyle: { fill: isBase ? "var(--accent, #6b7cff)" : "var(--node-canvas-grid, #9aa0aa)", opacity: 0.92 },
+        labelStyle: { fill: "#fff", fontSize: 11, fontWeight: 600 },
+        style: isBase ? undefined : { strokeDasharray: "6 4" },
+      };
+    });
+  }, [edges, nodes, t]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) =>
@@ -89,7 +129,7 @@ function NodeCanvasInner() {
       {sessionLoading && <div className="node-canvas__loading">{t("nodeCanvas.loading")}</div>}
       <ReactFlow
             nodes={nodes}
-            edges={edges}
+            edges={labelledEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={studio.onConnect}
@@ -110,7 +150,6 @@ function NodeCanvasInner() {
             proOptions={{ hideAttribution: true }}
           >
             {nodes.length === 0 ? <div className="node-studio-empty-overlay"><NodeCanvasEmptyState hasRecentGraph={studio.hasRecentGraph} onStartBlank={() => { if (!sessionLoading) addRootNode(); }} onOpenTemplates={studio.openTemplates} onResumeRecent={studio.resumeRecent} /></div> : null}
-            {nodes.length > 0 ? <NodeBatchBar /> : null}
             <NodeStudioOverlays studio={studio} graphEmpty={nodes.length === 0} disabled={sessionLoading} onAddRoot={() => addRootNode()} />
             <Background
               gap={24}

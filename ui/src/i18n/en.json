@@ -359,7 +359,20 @@
     "grokApi": "Grok API",
     "grokApiBody": "Calls api.x.ai with your xAI OAuth session: mandatory search, Grok 4.5 image-and-text tool planning in English, then xAI Images API. Attached references use xAI image editing so i2i context is preserved.",
     "openAccount": "Open account settings",
-    "mcp": {"loading":"Checking MCP readiness…","error":"MCP readiness could not be read","missing":"Provider is unavailable","disabled":"Provider is disabled","disconnected":"Provider is not connected","locked":"Provider execution is locked","default":"Provider default model","model-missing":"Selected model is unavailable","model-locked":"Selected model execution is locked","ready":"Available at the last connection check.","refresh":"Refresh","observed":"Observed {time}"}
+    "mcp": {
+      "loading": "Checking MCP readiness…",
+      "error": "MCP readiness could not be read",
+      "missing": "Provider is unavailable",
+      "disabled": "Provider is disabled",
+      "disconnected": "Provider is not connected",
+      "locked": "Provider execution is locked",
+      "default": "Provider default model",
+      "model-missing": "Selected model is unavailable",
+      "model-locked": "Selected model execution is locked",
+      "ready": "Available at the last connection check.",
+      "refresh": "Refresh",
+      "observed": "Observed {time}"
+    }
   },
   "generate": {
     "button": "Generate",
@@ -692,7 +705,72 @@
     "retry": "Retry",
     "retryTitle": "Retry this node's generation",
     "errorAuthCta": "Check your account or API key, then generate again.",
-    "errorFixCta": "Adjust the prompt or references, then generate again."
+    "errorFixCta": "Adjust the prompt or references, then generate again.",
+    "zoomImage": "View larger",
+    "placeholderLeft": "The prompt still has the empty slot {slot} — fill it before generating",
+    "copyId": "Copy node id",
+    "outfitFilled": "Filled the outfit description into {n} node(s)",
+    "promptLocked": "Fixed prompt for this node role — no need to edit",
+    "rolePick": "Node role",
+    "roleNone": "— role —",
+    "needImageForVideo": "This node has no image to turn into a video",
+    "working": "Working…",
+    "merge": "Merge video",
+    "mergeTitle": "Merge the list into one video",
+    "mergeEmpty": "Connect scenes in, or attach files",
+    "mergeDone": "Merged",
+    "mergeUp": "Move up",
+    "mergeDown": "Move down",
+    "wfRun": "▶ Run workflow",
+    "wfRunTitle": "Run every node from here down to the END marker, one after another",
+    "wfStop": "Stop",
+    "wfStopping": "Stopping…",
+    "wfRunning": "Running {done}/{total}",
+    "wfSteps": "{count} step(s)",
+    "wfStartHint": "Start of the workflow",
+    "wfEndHint": "End of the workflow",
+    "wfEmpty": "Nothing to run between the two markers",
+    "wfParentRequired": "{count} node(s) depend on a node outside the workflow that has not produced anything yet",
+    "wfMergeNeedTwo": "The merge node needs at least two clips",
+    "wfDone": "Workflow finished — {done}/{total}",
+    "wfStopped": "Stopped at {node} — {done}/{total} done",
+    "wfCanceled": "Canceled — {done}/{total} done",
+    "wfErr": {
+      "khong-phai-moc-dau": "This node is not a START marker",
+      "thieu-ket-thuc": "No END marker downstream — connect one to complete the workflow",
+      "vong-lap": "The workflow loops back on itself"
+    },
+    "wfApiInputs": "Inputs: {names}",
+    "wfApiCopy": "Copy curl",
+    "wfApiRunning": "API run {done}/{total}",
+    "wfApiStopTitle": "Stop the run that was triggered through the API",
+    "wfApiHistoryEmpty": "No run yet",
+    "wfApiCopyNode": "copy",
+    "wfApiCopyNodeTitle": "Copy a body that overrides this node for one call",
+    "wfApiNoPrompt": "(no prompt)",
+    "wfApiNodeImages": "{count} img",
+    "wfApiWait": "wait for the result",
+    "wfApiStream": "one frame per finished step",
+    "wfApiAsync": "returns a runId at once",
+    "wfApiStatus": "check a run",
+    "wfApiStreamRun": "attach to a run in progress",
+    "wfApiSecCalls": "API · {count} calls",
+    "wfApiSecInputs": "Inputs · {count}",
+    "wfApiSecNodes": "Nodes · {count}",
+    "wfApiSecRuns": "Recent runs",
+    "videoSettings": "Video settings",
+    "videoSettingsTitle": "Settings for this video node only",
+    "videoInherit": "Panel default",
+    "videoAspect": "Aspect",
+    "videoResolution": "Resolution",
+    "videoDuration": "Length",
+    "videoBase": "Base image",
+    "videoBaseFirstFrame": "First frame",
+    "videoBaseReference": "Reference only",
+    "bocDoNeedRef": "No photo attached — this node will invent an outfit. Attach the real one to keep it.",
+    "wfSize": "Whole-workflow ratio",
+    "wfSizeNone": "Per-node / panel",
+    "outfitNotReadYet": "Run the extraction node first — the outfit description is not read yet."
   },
   "nodeBatch": {
     "selectionOn": "Selecting",
@@ -718,8 +796,9 @@
     "disconnect": "Disconnect",
     "disconnectTitle": "Disconnect selected edge",
     "disconnected": "Connection removed.",
-    "parentConflict": "A node can only have one parent connection.",
-    "cycleBlocked": "That connection would create a loop."
+    "cycleBlocked": "That connection would create a loop.",
+    "roleBase": "base",
+    "roleRef": "ref"
   },
   "provider": {
     "authTitle": "Provider",
@@ -916,7 +995,8 @@
     "upscaleInvalid": "Invalid upscale parameters",
     "editVideo": "Edit video",
     "editVideoTitle": "Change this video with a prompt (grok-imagine-video)",
-    "editVideoPrompt": "What should change in this video? e.g. make the outfit red"
+    "editVideoPrompt": "What should change in this video? e.g. make the outfit red",
+    "animateAgainTitle": "Generate the Grok video again from the source image"
   },
   "session": {
     "switchTitle": "Switch session",
@@ -1259,7 +1339,8 @@
     "voiceSection": "Voice",
     "voiceLimit": "Up to {max}. Refer to them as <AUDIO_0> in the prompt",
     "voiceNeeds15": "Voices are supported only on grok-imagine-video-1.5",
-    "voiceCustomPlaceholder": "Custom voice id (/v1/custom-voices)"
+    "voiceCustomPlaceholder": "Custom voice id (/v1/custom-voices)",
+    "baseWinsOverRefs": "This video starts from the base image, so the attachment on the node was not used."
   },
   "sidebar": {
     "appName": "Image Generator",
@@ -2118,7 +2199,8 @@
       "addImage": "Add image",
       "templates": "Templates",
       "saveTemplate": "Save template",
-      "branch": "Branch"
+      "branch": "Branch",
+      "runner": "Runner"
     },
     "empty": {
       "title": "Build an image workflow",
@@ -2205,7 +2287,18 @@
       "saveError": "Could not save the template.",
       "renamePrompt": "Rename template",
       "renameError": "Could not rename the template.",
-      "deleteError": "Could not delete the template."
+      "deleteError": "Could not delete the template.",
+      "export": "Export",
+      "import": "Import a file",
+      "importHint": "A .ima2-template.json file exported from another machine.",
+      "exported": "Exported “{name}”.",
+      "exportError": "Could not export the template.",
+      "imported": "Imported “{name}”.",
+      "importError": "Could not import the file.",
+      "importNotTemplate": "That file is not an ima2 template export.",
+      "importNewerVersion": "That file was made by a newer version. Update this app first.",
+      "importTooLarge": "That template file is too large.",
+      "importBadName": "The template in that file has no usable name."
     },
     "palette": {
       "ariaLabel": "Insert node command",
@@ -2401,7 +2494,25 @@
     "refUndo": "Undo"
   },
   "comfy": {
-    "display": {"localMethod":"Local HTTP","loading":"Checking workflows…","refreshing":"Refreshing the last observation…","loadFailed":"Could not read the workflow catalog.","appAccessRequired":"App access is required to read the catalog.","unavailable":"Workflow availability is unknown.","available":"Available at the last catalog check.","chooseWorkflow":"Choose a workflow","empty":"No workflows registered.","selectedMissing":"The selected workflow is no longer listed.","selectedOffline":"The selected workflow was offline at the last check.","selectedLocked":"The selected workflow is locked.","observedConnected":"An instance responded at the last check.","lastChecked":"Last checked {time}","refresh":"Refresh","manage":"Manage workflows","controlsHelp":"This panel selects an image or video workflow. Its bindings determine which saved request settings apply; selecting a workflow does not verify execution."},
+    "display": {
+      "localMethod": "Local HTTP",
+      "loading": "Checking workflows…",
+      "refreshing": "Refreshing the last observation…",
+      "loadFailed": "Could not read the workflow catalog.",
+      "appAccessRequired": "App access is required to read the catalog.",
+      "unavailable": "Workflow availability is unknown.",
+      "available": "Available at the last catalog check.",
+      "chooseWorkflow": "Choose a workflow",
+      "empty": "No workflows registered.",
+      "selectedMissing": "The selected workflow is no longer listed.",
+      "selectedOffline": "The selected workflow was offline at the last check.",
+      "selectedLocked": "The selected workflow is locked.",
+      "observedConnected": "An instance responded at the last check.",
+      "lastChecked": "Last checked {time}",
+      "refresh": "Refresh",
+      "manage": "Manage workflows",
+      "controlsHelp": "This panel selects an image or video workflow. Its bindings determine which saved request settings apply; selecting a workflow does not verify execution."
+    },
     "workflowsTitle": "ComfyUI workflows",
     "addTitle": "Register a workflow",
     "loading": "Loading workflows…",
@@ -2505,5 +2616,23 @@
     "resetDefaults": "Reset to defaults",
     "compatTitle": "NovelAI lane",
     "compatBody": "Text-to-image only. Reference images, editing, and batch counts are not available on this lane."
+  },
+  "runner": {
+    "title": "Runner",
+    "refresh": "Refresh",
+    "loading": "Loading…",
+    "close": "Close",
+    "workflows": "Workflows ({count})",
+    "runs": "Runs ({count})",
+    "noWorkflow": "No workflow yet — add a START and an END marker to a graph",
+    "noRun": "No run yet",
+    "steps": "{count} step(s)",
+    "running": "{count} running",
+    "open": "Open",
+    "filterOn": "Only this",
+    "filterOff": "All",
+    "copyUrl": "Copy URL",
+    "watch": "Watch on canvas",
+    "openRun": "Open this session"
   }
 }

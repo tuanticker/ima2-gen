@@ -359,7 +359,20 @@
     "grokApi": "Grok API",
     "grokApiBody": "xAI OAuth 세션으로 api.x.ai를 직접 호출해 필수 검색 → Grok 4.5 이미지·텍스트 도구 기획(영어 프롬프트) → xAI Images API 순서로 실행합니다. 첨부 레퍼런스는 xAI 이미지 편집으로 보내 i2i 맥락을 유지합니다.",
     "openAccount": "계정 설정 열기",
-    "mcp": {"loading":"MCP 준비 상태 확인 중…","error":"MCP 준비 상태를 읽지 못했습니다","missing":"공급자를 사용할 수 없습니다","disabled":"공급자가 비활성화되었습니다","disconnected":"공급자가 연결되지 않았습니다","locked":"공급자 실행이 잠겨 있습니다","default":"공급자 기본 모델","model-missing":"선택한 모델을 사용할 수 없습니다","model-locked":"선택한 모델 실행이 잠겨 있습니다","ready":"최근 연결 확인 때 사용 가능했습니다.","refresh":"새로고침","observed":"확인 시각 {time}"}
+    "mcp": {
+      "loading": "MCP 준비 상태 확인 중…",
+      "error": "MCP 준비 상태를 읽지 못했습니다",
+      "missing": "공급자를 사용할 수 없습니다",
+      "disabled": "공급자가 비활성화되었습니다",
+      "disconnected": "공급자가 연결되지 않았습니다",
+      "locked": "공급자 실행이 잠겨 있습니다",
+      "default": "공급자 기본 모델",
+      "model-missing": "선택한 모델을 사용할 수 없습니다",
+      "model-locked": "선택한 모델 실행이 잠겨 있습니다",
+      "ready": "최근 연결 확인 때 사용 가능했습니다.",
+      "refresh": "새로고침",
+      "observed": "확인 시각 {time}"
+    }
   },
   "generate": {
     "button": "생성",
@@ -692,7 +705,72 @@
     "retry": "재시도",
     "retryTitle": "이 노드의 생성을 다시 시도합니다",
     "errorAuthCta": "계정 또는 API 키를 확인한 뒤 다시 생성해 주세요.",
-    "errorFixCta": "프롬프트나 참조 이미지를 고친 뒤 다시 생성해 주세요."
+    "errorFixCta": "프롬프트나 참조 이미지를 고친 뒤 다시 생성해 주세요.",
+    "zoomImage": "크게 보기",
+    "placeholderLeft": "프롬프트에 빈 슬롯 {slot} 이 남아 있습니다 — 채운 뒤 생성하세요",
+    "copyId": "노드 ID 복사",
+    "outfitFilled": "{n}개 노드에 의상 설명을 채웠습니다",
+    "promptLocked": "이 노드 역할의 고정 프롬프트 — 수정할 필요 없음",
+    "rolePick": "노드 역할",
+    "roleNone": "— 역할 —",
+    "needImageForVideo": "이 노드에는 비디오로 만들 이미지가 없습니다",
+    "working": "생성 중…",
+    "merge": "비디오 병합",
+    "mergeTitle": "목록을 하나의 비디오로 병합",
+    "mergeEmpty": "장면을 연결하거나 파일을 첨부하세요",
+    "mergeDone": "병합 완료",
+    "mergeUp": "위로",
+    "mergeDown": "아래로",
+    "wfRun": "▶ 워크플로 실행",
+    "wfRunTitle": "여기서 END 표식까지 모든 노드를 차례로 실행합니다",
+    "wfStop": "중지",
+    "wfStopping": "중지하는 중…",
+    "wfRunning": "실행 중 {done}/{total}",
+    "wfSteps": "{count}단계",
+    "wfStartHint": "워크플로 시작점",
+    "wfEndHint": "워크플로 종료점",
+    "wfEmpty": "두 표식 사이에 실행할 것이 없습니다",
+    "wfParentRequired": "{count}개 노드가 아직 아무것도 만들지 않은 외부 노드에 의존합니다",
+    "wfMergeNeedTwo": "병합 노드에는 클립이 최소 두 개 필요합니다",
+    "wfDone": "워크플로 완료 — {done}/{total}",
+    "wfStopped": "{node}에서 중단 — {done}/{total} 완료",
+    "wfCanceled": "취소됨 — {done}/{total} 완료",
+    "wfErr": {
+      "khong-phai-moc-dau": "이 노드는 START 표식이 아닙니다",
+      "thieu-ket-thuc": "아래쪽에 END 표식이 없습니다 — 연결해야 워크플로가 완성됩니다",
+      "vong-lap": "워크플로가 자기 자신으로 되돌아옵니다"
+    },
+    "wfApiInputs": "입력: {names}",
+    "wfApiCopy": "curl 복사",
+    "wfApiRunning": "API 실행 {done}/{total}",
+    "wfApiStopTitle": "API로 시작된 실행을 중지",
+    "wfApiHistoryEmpty": "아직 실행 없음",
+    "wfApiCopyNode": "복사",
+    "wfApiCopyNodeTitle": "이 노드를 한 번만 덮어쓰는 본문 복사",
+    "wfApiNoPrompt": "(프롬프트 없음)",
+    "wfApiNodeImages": "이미지 {count}",
+    "wfApiWait": "결과를 기다림",
+    "wfApiStream": "단계가 끝날 때마다 한 프레임",
+    "wfApiAsync": "runId를 즉시 반환",
+    "wfApiStatus": "실행 상태 확인",
+    "wfApiStreamRun": "진행 중인 실행에 붙기",
+    "wfApiSecCalls": "API · 호출 {count}개",
+    "wfApiSecInputs": "입력 · {count}",
+    "wfApiSecNodes": "노드 · {count}",
+    "wfApiSecRuns": "최근 실행",
+    "videoSettings": "영상 설정",
+    "videoSettingsTitle": "이 영상 노드에만 적용되는 설정",
+    "videoInherit": "패널 기본값",
+    "videoAspect": "비율",
+    "videoResolution": "해상도",
+    "videoDuration": "길이",
+    "videoBase": "베이스 이미지",
+    "videoBaseFirstFrame": "첫 프레임",
+    "videoBaseReference": "참조로만",
+    "bocDoNeedRef": "사진이 없습니다 — 이 노드가 의상을 지어냅니다. 실제 사진을 첨부하면 그대로 유지됩니다.",
+    "wfSize": "워크플로 전체 비율",
+    "wfSizeNone": "노드별 / 패널",
+    "outfitNotReadYet": "먼저 추출 노드를 실행하세요 — 의상 설명을 아직 읽지 않았습니다."
   },
   "nodeBatch": {
     "selectionOn": "선택중",
@@ -718,8 +796,9 @@
     "disconnect": "끊기",
     "disconnectTitle": "선택한 연결선 끊기",
     "disconnected": "연결선을 끊었습니다.",
-    "parentConflict": "한 노드에는 부모 연결을 하나만 둘 수 있습니다.",
-    "cycleBlocked": "이 연결은 순환 고리를 만들기 때문에 연결할 수 없습니다."
+    "cycleBlocked": "이 연결은 순환 고리를 만들기 때문에 연결할 수 없습니다.",
+    "roleBase": "원본",
+    "roleRef": "참조"
   },
   "provider": {
     "authTitle": "공급자",
@@ -916,7 +995,8 @@
     "upscaleInvalid": "업스케일 파라미터가 올바르지 않습니다",
     "editVideo": "영상 편집",
     "editVideoTitle": "프롬프트로 이 영상을 수정합니다 (grok-imagine-video)",
-    "editVideoPrompt": "영상을 어떻게 바꿀까요? 예: 옷을 빨간색으로"
+    "editVideoPrompt": "영상을 어떻게 바꿀까요? 예: 옷을 빨간색으로",
+    "animateAgainTitle": "원본 이미지로 Grok 비디오 다시 생성"
   },
   "session": {
     "switchTitle": "세션 전환",
@@ -1259,7 +1339,8 @@
     "voiceSection": "보이스",
     "voiceLimit": "최대 {max}개. 프롬프트에서 <AUDIO_0>처럼 지칭하세요",
     "voiceNeeds15": "보이스는 grok-imagine-video-1.5에서만 지원합니다",
-    "voiceCustomPlaceholder": "커스텀 보이스 ID (/v1/custom-voices)"
+    "voiceCustomPlaceholder": "커스텀 보이스 ID (/v1/custom-voices)",
+    "baseWinsOverRefs": "이 영상은 베이스 이미지에서 시작하므로 노드에 첨부한 이미지는 사용되지 않았습니다."
   },
   "sidebar": {
     "appName": "이미지 생성기",
@@ -2118,7 +2199,8 @@
       "addImage": "이미지 추가",
       "templates": "템플릿",
       "saveTemplate": "템플릿 저장",
-      "branch": "분기"
+      "branch": "분기",
+      "runner": "러너"
     },
     "empty": {
       "title": "이미지 워크플로 만들기",
@@ -2205,7 +2287,18 @@
       "saveError": "템플릿을 저장하지 못했어요.",
       "renamePrompt": "템플릿 이름 변경",
       "renameError": "템플릿 이름을 바꾸지 못했어요.",
-      "deleteError": "템플릿을 삭제하지 못했어요."
+      "deleteError": "템플릿을 삭제하지 못했어요.",
+      "export": "내보내기",
+      "import": "파일 가져오기",
+      "importHint": "다른 기기에서 내보낸 .ima2-template.json 파일입니다.",
+      "exported": "“{name}”을 내보냈습니다.",
+      "exportError": "템플릿을 내보낼 수 없습니다.",
+      "imported": "“{name}”을 가져왔습니다.",
+      "importError": "파일을 가져올 수 없습니다.",
+      "importNotTemplate": "ima2 템플릿 파일이 아닙니다.",
+      "importNewerVersion": "더 새로운 버전에서 만든 파일입니다. 앱을 먼저 업데이트하세요.",
+      "importTooLarge": "템플릿 파일이 너무 큽니다.",
+      "importBadName": "파일 안 템플릿에 사용할 수 있는 이름이 없습니다."
     },
     "palette": {
       "ariaLabel": "노드 삽입 명령",
@@ -2401,7 +2494,25 @@
     "refUndo": "되돌리기"
   },
   "comfy": {
-    "display": {"localMethod":"로컬 HTTP","loading":"워크플로 확인 중…","refreshing":"최근 상태를 다시 확인하는 중…","loadFailed":"워크플로 목록을 읽지 못했습니다.","appAccessRequired":"목록을 읽으려면 앱 접근 권한이 필요합니다.","unavailable":"워크플로 사용 가능 여부를 확인할 수 없습니다.","available":"최근 목록 확인 때 사용 가능했습니다.","chooseWorkflow":"워크플로 선택","empty":"등록된 워크플로가 없습니다.","selectedMissing":"선택한 워크플로가 목록에 없습니다.","selectedOffline":"최근 확인 때 선택한 워크플로가 오프라인이었습니다.","selectedLocked":"선택한 워크플로가 잠겨 있습니다.","observedConnected":"최근 확인 때 인스턴스가 응답했습니다.","lastChecked":"최근 확인: {time}","refresh":"다시 확인","manage":"워크플로 관리","controlsHelp":"이미지 또는 비디오 워크플로를 선택합니다. 저장된 요청 설정 중 적용되는 항목은 바인딩이 결정합니다. 선택만으로 실행 성공을 확인한 것은 아닙니다."},
+    "display": {
+      "localMethod": "로컬 HTTP",
+      "loading": "워크플로 확인 중…",
+      "refreshing": "최근 상태를 다시 확인하는 중…",
+      "loadFailed": "워크플로 목록을 읽지 못했습니다.",
+      "appAccessRequired": "목록을 읽으려면 앱 접근 권한이 필요합니다.",
+      "unavailable": "워크플로 사용 가능 여부를 확인할 수 없습니다.",
+      "available": "최근 목록 확인 때 사용 가능했습니다.",
+      "chooseWorkflow": "워크플로 선택",
+      "empty": "등록된 워크플로가 없습니다.",
+      "selectedMissing": "선택한 워크플로가 목록에 없습니다.",
+      "selectedOffline": "최근 확인 때 선택한 워크플로가 오프라인이었습니다.",
+      "selectedLocked": "선택한 워크플로가 잠겨 있습니다.",
+      "observedConnected": "최근 확인 때 인스턴스가 응답했습니다.",
+      "lastChecked": "최근 확인: {time}",
+      "refresh": "다시 확인",
+      "manage": "워크플로 관리",
+      "controlsHelp": "이미지 또는 비디오 워크플로를 선택합니다. 저장된 요청 설정 중 적용되는 항목은 바인딩이 결정합니다. 선택만으로 실행 성공을 확인한 것은 아닙니다."
+    },
     "workflowsTitle": "ComfyUI 워크플로",
     "addTitle": "워크플로 등록",
     "loading": "워크플로를 불러오는 중…",
@@ -2505,5 +2616,23 @@
     "resetDefaults": "기본값으로 되돌리기",
     "compatTitle": "NovelAI 레인",
     "compatBody": "텍스트로 이미지를 만드는 것만 됩니다. 참조 이미지, 편집, 여러 장 생성은 이 레인에서 지원하지 않습니다."
+  },
+  "runner": {
+    "title": "러너",
+    "refresh": "새로고침",
+    "loading": "불러오는 중…",
+    "close": "닫기",
+    "workflows": "워크플로 ({count})",
+    "runs": "실행 ({count})",
+    "noWorkflow": "아직 워크플로가 없습니다 — 그래프에 START와 END 표식을 추가하세요",
+    "noRun": "아직 실행 없음",
+    "steps": "{count}단계",
+    "running": "{count}개 실행 중",
+    "open": "열기",
+    "filterOn": "이것만",
+    "filterOff": "전체",
+    "copyUrl": "URL 복사",
+    "watch": "캔버스에서 보기",
+    "openRun": "이 세션 열기"
   }
 }

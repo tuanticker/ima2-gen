@@ -182,6 +182,7 @@ export async function postResponses({
   const fetchSignal = signal
     ? combineAbortSignals([controller.signal, signal])
     : controller.signal;
+  let daVaoLuong = false;
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -209,6 +210,7 @@ export async function postResponses({
         upstreamBodyChars: text.length,
       });
     }
+    daVaoLuong = true;
     if (requestId) setJobPhase(requestId, "streaming");
     const contentType = res.headers.get("content-type") || "";
     return contentType.includes("text/event-stream")
@@ -227,10 +229,16 @@ export async function postResponses({
       throw makeError("Responses image generation timed out", { status: 504, code: "RESPONSES_IMAGE_TIMEOUT", cause: err.raw });
     }
     if (isKnownResponsesError(err.raw)) throw err.raw;
-    throw makeError("Responses request failed before receiving a response", {
+    // Dut GIUA CHUNG khac han voi khong goi duoc: dau phan hoi da ve, mo hinh
+    // da bat dau lam, va cau "failed before receiving a response" truoc day noi
+    // sai hoan toan chuyen do - doc log khong biet duong nao ma lan.
+    throw makeError(daVaoLuong
+      ? "Responses stream ended before the image arrived"
+      : "Responses request failed before receiving a response", {
       status: 502,
       code: "NETWORK_FAILED",
       errorName: err.name,
+      streamStarted: daVaoLuong,
       upstreamMessageRedacted: true,
     });
   } finally {

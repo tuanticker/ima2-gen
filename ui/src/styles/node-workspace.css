@@ -85,28 +85,20 @@
   cursor: pointer;
   box-shadow: 0 4px 12px var(--shadow-soft);
 }
+/* Nam trong hang cong cu: khong co khung/nen rieng nua, neu khong thi trong
+   nhu mot thanh long trong mot thanh. */
 .node-batch-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  max-width: min(920px, calc(100vw - 320px));
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
-  box-shadow: 0 14px 36px var(--shadow-soft);
-  backdrop-filter: blur(12px);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
+/* Vien, nen va bo goc lay theo hang cong cu (.node-studio-toolbar button) -
+   dat rieng o day thi hai nhom nut canh nhau trong cung mot hang lai khac mau. */
 .node-batch-bar button {
-  min-height: 30px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  color: var(--text);
-  padding: 0 10px;
   font-size: 12px;
   white-space: nowrap;
-  cursor: pointer;
 }
 .node-batch-bar__danger {
   border-color: color-mix(in srgb, var(--red) 62%, var(--border)) !important;
@@ -151,32 +143,202 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 16%, transparent),
     0 0 26px color-mix(in srgb, var(--amber) 20%, transparent);
 }
-.image-node--pending::before,
-.image-node--reconciling::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  z-index: 0;
-  border-radius: var(--r-xl);
-  padding: 2px;
-  background:
-    conic-gradient(
-      from 0deg,
-      transparent 0deg,
-      color-mix(in srgb, var(--amber) 92%, white) 70deg,
-      color-mix(in srgb, var(--accent) 88%, white) 145deg,
-      transparent 220deg,
-      transparent 360deg
-    );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: image-node-border-spin 1.45s linear infinite;
-  pointer-events: none;
+/* Vien tinh khi node dang chay. Truoc day o day la mot vien gradient hinh non
+   XOAY VONG 1.45s/vong - qua on, va gio da co nhan "Working..." o goc anh bao
+   ro hon nhieu. Giu mau am de van nhan ra ngay node nao dang chay. */
+.image-node--pending,
+.image-node--reconciling {
+  border-color: color-mix(in srgb, var(--amber) 82%, var(--accent));
 }
 .image-node--ready { border-color: var(--blue); }
 .image-node--error { border-color: var(--red); }
+.image-node__id {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 2px 4px;
+  font-size: 10px;
+  line-height: 1.3;
+  /* Ca hang nay la cho de keo node di. */
+  cursor: grab;
+}
+.image-node__id:active {
+  cursor: grabbing;
+}
+/* Ma node: chu thuong, keo duoc. Ca dai tren dinh node la cho de keo node di,
+   nen khong duoc bat cai gi o day bat con tro thanh "bam". */
+.image-node__id-ma {
+  /* Cat bang dau ba cham khi qua dai: ma cua node tu tao la mot uuid dai hon
+     ca be ngang node, de nguyen thi no day o vai tro ra ngoai va ca hang tieu
+     de vo ra. Ma day du van con o tooltip va o nut chep.
+     Chan bang max-width chu khong cho co lai theo flex: cho co lai thi ma NGAN
+     cung bi cat theo do dai cua cai nhan ben canh, va "canh-hong-1" hien ra
+     thanh "ca..." - mat luon cong dung cua ma. */
+  flex: 0 0 auto;
+  max-width: 58%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: .02em;
+  /* Khong boi den chu khi keo: keo mot doan la ca dong ma bi boi xanh, trong
+     nhu dang chon chu chu khong phai dang di chuyen node. */
+  user-select: none;
+}
+.image-node__id-copy {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 1px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: copy;
+  opacity: .6;
+}
+.image-node__id-copy:hover {
+  color: var(--accent);
+  opacity: 1;
+}
+.image-node__ref-chip--ke-thua {
+  position: relative;
+  opacity: .82;
+  outline: 1px dashed var(--border-strong);
+  outline-offset: -1px;
+}
+.image-node__ref-vai {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 0 3px;
+  background: rgba(16, 16, 20, .72);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.image-node__gop {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 150px;
+  padding: 3px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.image-node__gop-trong {
+  padding: 8px 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+  text-align: center;
+}
+.image-node__gop-muc {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  background: var(--surface);
+}
+.image-node__gop-muc img,
+.image-node__gop-muc video {
+  width: 26px;
+  height: 26px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+.image-node__gop-so {
+  flex: 0 0 auto;
+  min-width: 12px;
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 700;
+  text-align: right;
+}
+.image-node__gop-loai {
+  flex: 1 1 auto;
+  color: var(--text-dim);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.image-node__gop-nut {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+.image-node__gop-nut button {
+  min-width: 16px;
+  padding: 0 2px;
+  border: 1px solid var(--border);
+  background: var(--control-bg);
+  color: var(--text);
+  font-size: 9px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.image-node__gop-nut button:disabled {
+  opacity: .35;
+  cursor: default;
+}
+/* Phu kin khung xem truoc. Can thiet vi khung xuong chi hien khi node CHUA co
+   gi: sinh lai tren node da co anh/video thi khong he co phan hoi nao. */
+.image-node__busy {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  background: rgba(16, 16, 20, 0.62);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  pointer-events: none;
+}
+.image-node__role {
+  flex: 0 0 auto;
+  max-width: 74px;
+  padding: 0 3px;
+  border: 0;
+  background: var(--control-bg);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  line-height: 1.5;
+  cursor: pointer;
+  /* Bo mui ten mac dinh cua trinh duyet: o nay nam chen trong hang tieu de,
+     mui ten lam no tho va chiem gan het be ngang node. */
+  appearance: none;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+.image-node__role:hover {
+  filter: brightness(1.12);
+}
+/* Danh sach vai tro khi bung ra.
+   O `select` co chu trang de doc tren nen mau cua vai tro, nhung danh sach bung
+   ra LAI THUA cai mau chu do trong khi nen cua no la nen he thong - chu trang
+   tren nen trang, khong doc duoc mot dong nao ngoai dong dang tro toi. Nen phai
+   dat lai mau cho tung dong. */
+.image-node__role option {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+.image-node__id-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-dim, #8b8b93);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .image-node__preview {
   width: 100%;
   height: var(--node-preview-h, 240px);
@@ -192,6 +354,35 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+.image-node__preview {
+  position: relative;
+}
+.image-node__zoom {
+  position: absolute;
+  right: 6px;
+  /* Tren, khong duoi: node video co thanh dieu khien nam o day khung. */
+  top: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  /* Khong dat border-radius: manifest ban kinh bi dong bang o 482 dong, them
+     mot khai bao moi la vi pham rang buoc thiet ke. */
+  color: #fff;
+  background: rgba(24, 24, 28, 0.55);
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease;
+  cursor: zoom-in;
+}
+.image-node__preview:hover .image-node__zoom,
+.image-node__zoom:focus-visible {
+  opacity: 1;
+}
+.image-node__zoom:hover {
+  background: rgba(24, 24, 28, 0.78);
 }
 .image-node__partial {
   filter: saturate(1.04) contrast(1.03);
@@ -224,16 +415,6 @@
   resize: vertical;
 }
 
-@keyframes image-node-border-spin {
-  to { transform: rotate(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .image-node--pending::before,
-  .image-node--reconciling::before {
-    animation: none;
-  }
-}
 .image-node__prompt:focus,
 .image-node__prompt:focus-visible {
   outline: none;
@@ -485,3 +666,306 @@
 /* wp6: 44px hit area */
 .image-node__del { position: relative; }
 .image-node__del::after { content: ""; position: absolute; inset: 50% auto auto 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+
+/* Node MOC (BAT DAU / KET THUC).
+
+   Moc khong sinh gi nen no khong can khung xem truoc 240px, o nhap prompt hay
+   hang nut sinh. De nguyen bo khung cua node thuong thi hai cai moc to bang ca
+   mot canh that, nhin vao tuong la chung cung cho ra anh. */
+.image-node--moc {
+  min-width: 0;
+}
+.image-node__moc-than {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 10px 8px;
+  text-align: center;
+}
+.image-node__moc-nhan {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.image-node__moc-so {
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.image-node__wf-nut {
+  padding: 5px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  cursor: pointer;
+}
+.image-node__wf-nut:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.image-node__wf-nut--dung {
+  border-color: var(--red);
+  background: var(--red);
+}
+/* Node dang toi luot trong mot khuon dang chay. Lop phu "dang chay" chi hien
+   tren node co trang thai pending; buoc GOP VIDEO thi ffmpeg chay o may chu ma
+   node khong doi trang thai, nen van can mot dau hieu rieng cho "dang toi no". */
+.image-node--wf-hien-tai {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Chi dan API tren node BAT DAU. Gap lai mac dinh: phan lon thoi gian nguoi
+   dung chi bam chay tay, dia chi API chi can khi di noi voi he thong khac. */
+.image-node__api {
+  width: 100%;
+  text-align: left;
+}
+.image-node__api-mo {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+.image-node__api-than {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+.image-node__api-duong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 9px;
+  line-height: 1.35;
+}
+.image-node__api-o {
+  color: var(--text-dim);
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+.image-node__api-chep {
+  justify-self: start;
+  padding: 2px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--text-dim);
+  font-size: 9px;
+  cursor: copy;
+}
+
+/* Lich su cac luot chay goi qua API, nam trong o API cua node BAT DAU. */
+.image-node__api-ls {
+  display: grid;
+  gap: 2px;
+  margin-top: 2px;
+}
+.image-node__api-ls-tieu {
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.image-node__api-ls-dong {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.image-node__api-ls-luc {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.image-node__api-ls-tt {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+.image-node__api-ls-dong--xong .image-node__api-ls-tt { color: var(--green); }
+.image-node__api-ls-dong--hong .image-node__api-ls-tt { color: var(--red); }
+.image-node__api-ls-dong--da-huy .image-node__api-ls-tt,
+.image-node__api-ls-dong--dang-chay .image-node__api-ls-tt { color: var(--text-dim); }
+.image-node__api-ls-so {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+}
+
+/* Than cua tung node trong khuon, hien ngay tren node BAT DAU. */
+.image-node__api-node {
+  display: grid;
+  gap: 4px;
+  margin-top: 2px;
+}
+.image-node__api-node-muc {
+  display: grid;
+  gap: 2px;
+  padding: 3px 4px;
+  border-left: 2px solid var(--border-strong);
+}
+.image-node__api-node-dau {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.image-node__api-node-ma {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.image-node__api-node-vai {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+/* Prompt hien DU, khong cat: xem duoc het moi biet minh dang ghi de cai gi.
+   Cao qua thi cuon trong chinh o nay thay vi keo dai node ra vo tan. */
+.image-node__api-than-node {
+  max-height: 96px;
+  margin: 0;
+  overflow: auto;
+  color: var(--text);
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.image-node__api-node-anh {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+/* Mot cach goi khuon: dia chi, ghi chu ngan, va nut chep lenh cua chinh no. */
+.image-node__api-tuyen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 4px;
+  align-items: start;
+  padding: 2px 0;
+}
+.image-node__api-tuyen .image-node__api-duong {
+  grid-column: 1;
+}
+.image-node__api-ghi {
+  grid-column: 1;
+  color: var(--text-dim);
+  font-size: 8px;
+  line-height: 1.3;
+}
+.image-node__api-tuyen .image-node__api-chep {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+/* Tung muc trong o API, gap rieng. Gop het vao mot khoi thi mo ra la mot cot
+   dai hon ca canvas va phan dang can bi day khoi tam nhin. */
+.image-node__api-muc {
+  border-top: 1px solid var(--border);
+}
+.image-node__api-muc:first-child {
+  border-top: 0;
+}
+
+/* Cai dat rieng cua node VIDEO. Dong san va nam duoi thanh dinh anh: no chi
+   duoc mo ra khi nguoi dung thuc su muon doi, con lai thi node phai gon. */
+.image-node__vid-cd {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 6px;
+}
+.image-node__vid-cd-mo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.image-node__vid-cd-so {
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 10px;
+}
+.image-node__vid-cd-than {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+.image-node__vid-cd-than label {
+  display: grid;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.image-node__vid-cd-than select {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 11px;
+  padding: 3px 4px;
+}
+
+/* Node BOC DO chua co anh nao: no se tu nghi ra mot bo do. Mau NHAC chu khong
+   phai mau chan - co nguoi co y de trong de mo hinh tu bia ra mot bo. */
+.image-node__thieu-anh {
+  margin-top: 6px;
+  padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border));
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--amber) 10%, var(--surface));
+  color: var(--amber);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+/* Ti le chung cua ca khuon, dat tren node BAT DAU. */
+.image-node__khuon-size {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.image-node__khuon-size select {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 11px;
+  padding: 3px 4px;
+}
+.image-node__khuon-size option {
+  background: var(--surface);
+  color: var(--text);
+}

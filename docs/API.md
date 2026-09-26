@@ -10,10 +10,17 @@ http://localhost:3333
 
 ## Local and LAN access
 
-The configured bind determines access mode. Loopback keeps single-user no-token
-use; a non-loopback bind requires `IMA2_LAN_TOKEN`, including requests arriving
-from a loopback proxy. LAN protects both `/api` and `/generated` before file,
-Range or conditional-response processing. UI/static assets remain public.
+The bind sets the mode, the connection decides the gate. A loopback bind keeps
+single-user no-token use. A non-loopback bind turns on `IMA2_LAN_TOKEN` for
+callers arriving over the network — but a connection whose source address is
+`127.x`/`::1` is exempt, because opening the port for the tailnet is not a
+reason to lock the machine the server runs on. Set
+`IMA2_LAN_TOKEN_ON_LOOPBACK=1` to demand the token there too; do that when the
+machine has other users, or when anything proxies into the server, since every
+connection through a local proxy looks like loopback. The exemption reads the
+socket, never `X-Forwarded-For`. LAN protects both `/api` and `/generated`
+before file, Range or conditional-response processing. UI/static assets remain
+public.
 
 | Endpoint | Contract |
 |---|---|
@@ -781,6 +788,79 @@ Node graph templates (higgsfield 120). Seed templates ship with the app and are 
 | `POST` | `/api/node-templates/:id/instantiate` | Return a graph copy with fresh node IDs (never auto-runs) |
 | `PATCH` | `/api/node-templates/:id` | Rename a user template (seed → `403`) |
 | `DELETE` | `/api/node-templates/:id` | Delete a user template (seed → `403`) |
+| `GET` | `/api/node-templates/:id/export` | Download one template as a portable JSON file (seed templates included) |
+| `POST` | `/api/node-templates/import` | Create a user template from such a file (`201 { template }`) |
+
+### The fashion template library
+
+Ten seed templates ship for the one job people do most: **one outfit in, a model
+wearing it in a named shooting concept out**. Each is the same chain — MODEL +
+EXTRACT (a real photo of the garment) → DRESS → four scenes → END — and differs
+in the concept.
+
+Four are art-directed sets, each with its own props, styling and light:
+`Tiec vuon cot trang` (garden party under a white colonnade), `Dam sen studio`
+(a lotus pond built in the studio, reflected in a shallow water tray),
+`San tennis chieu muon` (clay court raked by a low sun) and `Co phuc studio`
+(Vietnamese heritage costume on a bare white cyclorama). Six are plainer
+backdrops for everyday catalogue work: `Lookbook studio`, `Street style`,
+`Quan ca phe`, `San thuong hoang hon`, `Editorial toi gian`,
+`Thoi trang san bay`.
+
+The user does exactly one thing: attach the real photo of the outfit to the
+extraction node. Everything else is already wired — the chain declares **no
+required inputs**, the extraction step fills `{{TRANG_PHUC}}` for every node
+behind it, and each START marker carries the ratio for its concept
+(`1024x1536` for lookbook and editorial, `1152x2048` for the rest).
+
+Three rules the library follows, each one the residue of a real failure:
+
+- Prompts say `Wearing: {{TRANG_PHUC}}`, never `She wears:` — the outfit arrives
+  through the slot, so the prompt must not hardcode a gender the MODEL node is
+  what actually decides.
+- Every scene names **body mechanics and camera**: which foot is forward, where
+  the hands are, where the eyes go, camera height and focal length. A generic
+  line like "walking toward the camera, mid-stride" makes every frame in the set
+  come back looking like the same frame.
+- The LOCATION block is identical character for character across the scenes of
+  one template. It may be the only thing that makes the set read as one shoot.
+
+`lib/nodeTemplateThoiTrang.ts` builds them from a `Concept` list, so adding a
+concept is one entry: location, lighting tail, model description, ratio, and the
+pose line per scene.
+
+### Portable template files
+
+A template lives in the SQLite database of the machine that made it, so moving a
+hand-built graph to a second machine means carrying the file:
+
+```bash
+curl -sO -J http://127.0.0.1:3000/api/node-templates/<id>/export
+curl -sX POST http://127.0.0.1:3000/api/node-templates/import   -H 'content-type: application/json' --data-binary @my-flow.ima2-template.json
+```
+
+The document holds only the shape of the workflow — no sessions, no generated
+images:
+
+```json
+{
+  "kind": "ima2.node-template",
+  "version": 1,
+  "exportedAt": 1758499200000,
+  "sourceId": "template_01J…",
+  "name": "Idol Kpop",
+  "description": "",
+  "tags": [],
+  "graph": { "nodes": [], "edges": [] }
+}
+```
+
+Import is a normal create: the graph goes through the same strip step, so
+secret-looking keys and run outputs in a file from elsewhere never reach the
+database. A file whose `kind` is wrong (`TEMPLATE_FILE_KIND`), whose `version`
+is newer than this app understands (`TEMPLATE_FILE_VERSION`) or which is over
+2 MB / 300 nodes / 1200 edges (`TEMPLATE_FILE_TOO_LARGE`) is refused. A name
+already in use is imported as `Name (2)` instead of overwriting.
 
 Graph save requests may include observability headers:
 
@@ -1216,6 +1296,476 @@ normal generation. Async: `202 { requestId, taskId }`; `done` carries
 `recovered: true`.
 Catalog-only providers (e.g. Higgsfield on a free plan) return
 `409 MCP_EXECUTION_LOCKED`, same as `/api/mcp/generate`.
+
+## Media Merge
+
+`POST /api/media/merge` joins several already-generated files into a single MP4.
+No model is called: the route only runs ffmpeg, so it is fast and costs nothing.
+
+```json
+{
+  "items": [{ "filename": "1790001755820_8a5e47d5.mp4" }, { "filename": "n_5a3efe98d3.png" }],
+  "imageSec": 2,
+  "fps": 24
+}
+```
+
+- `items` — two or more entries, in the exact order they should appear. Each
+  `filename` must resolve inside the generated directory; paths are rejected.
+  Videos keep their own length, images are held for `imageSec` seconds
+  (default 2, max 30).
+- `fps` — optional output frame rate (default 24, max 60).
+
+Every input is scaled and padded to one frame size before concatenation, taken
+from the first video in the list (falling back to 720×1280 when the list holds
+only images). Mixed resolutions and aspect ratios are therefore safe.
+
+The output carries **no audio track**: mixing clips that have sound with images
+that do not needs a silent source and drift correction, which this route does
+not attempt.
+
+```json
+{ "ok": true, "filename": "1790002811990_ghep.mp4", "url": "/generated/1790002811990_ghep.mp4", "items": 3 }
+```
+
+Errors: `MERGE_NEED_TWO` (fewer than two items), `MERGE_ITEM_INVALID` (an entry
+without a filename), `MERGE_ITEM_KIND` (unsupported extension), `MERGE_FAILED`
+(ffmpeg failed or is not installed).
+
+## Reaching the server from another machine (Tailscale)
+
+```bash
+npm run serve:tailscale
+```
+
+It prints the URL and the token. The same address serves both the UI and the
+API, so a phone or laptop in the tailnet opens `http://<machine>:3333` and gets
+the studio, and a script hits `http://<machine>:3333/api/...`.
+
+Three things have to hold at once, and the script sets all three:
+
+| | Why |
+|---|---|
+| `IMA2_HOST=0.0.0.0` | the default `127.0.0.1` answers only that one machine |
+| `IMA2_LAN_TOKEN` | the server **refuses to start** when bound past loopback without one — opening a port with no lock is a silent mistake |
+| `IMA2_PUBLIC_ORIGINS` | an IP the server infers by itself, a MagicDNS *name* it does not: a request whose `Host` is that name gets `403 LOCAL_HOST_REJECTED` |
+
+The token lives at `~/.ima2/lan-token.txt`, never in the repo. Send it as
+`x-ima2-token` on API calls; a browser is asked for it once and keeps a session.
+Opening the UI on the serving machine itself needs nothing — see **Local and LAN
+access** for when that exemption does not apply.
+
+The CLI does **not** attach the token to a server it discovered by probing — a
+token only ever binds to a server named on purpose. So in this mode point it at
+the server explicitly:
+
+```bash
+IMA2_SERVER=http://100.x.y.z:3333 IMA2_LAN_TOKEN=$(cat ~/.ima2/lan-token.txt) ima2 ping
+```
+
+On Windows the port also has to be allowed through the firewall, scoped to the
+Tailscale interface so no other network can reach it (run as administrator):
+
+```powershell
+New-NetFirewallRule -DisplayName "ima2 studio (Tailscale only) TCP 3333" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3333 -InterfaceAlias "Tailscale"
+```
+
+## Workflows (START → END)
+
+A graph that carries a **START** marker node (`vaiTro: "bat-dau"`) reaching an
+**END** marker (`vaiTro: "ket-thuc"`) is a runnable workflow. The START node is
+the entry point: its address is `/api/wf/:sessionId/:startNodeId`. The server
+runs every node between the two markers itself — no browser tab has to be open —
+and the END node decides what comes back: the media of the nodes wired into it.
+
+These routes sit under `/api`, so they inherit the same access rules as every
+other route: open on a local bind, `x-ima2-token` required in LAN mode (see
+[Local and LAN access](#local-and-lan-access)).
+
+### Listing and describing
+
+`GET /api/wf` lists every START node found in the most recent sessions.
+
+```json
+{ "workflows": [
+  { "sessionId": "s_01M…", "title": "Idol Kpop", "startNodeId": "nc_a1b2",
+    "path": "/api/wf/s_01M…/nc_a1b2", "ready": true, "steps": 6 },
+  { "sessionId": "s_01N…", "startNodeId": "nc_c3d4", "ready": false,
+    "reason": "thieu-ket-thuc" }
+] }
+```
+
+`GET /api/wf/:sessionId/:startNodeId` describes one workflow without running it —
+the ordered steps with their current content, and the input slots it needs. The
+prompts are here so a caller can build the override body without reading the
+graph.
+
+```json
+{ "sessionId": "s_01M…", "startNodeId": "nc_a1b2", "ketThuc": "nc_z9",
+  "soViec": 2, "inputs": ["MAU_SAC"],
+  "buoc": [{ "nodeId": "nc_ve", "vaiTro": "canh", "viec": "anh",
+             "prompt": "a {{MAU_SAC}} circle", "size": "1024x1024" }] }
+```
+
+### Running
+
+`POST /api/wf/:sessionId/:startNodeId`
+
+```json
+{
+  "inputs": { "TRANG_PHUC": "a pleated navy skirt and a white knit top" },
+  "images": { "nc_bocdo": ["data:image/png;base64,iVBORw0KGgo…"] },
+  "nodes": { "nc_canh": { "prompt": "she sits by the window", "size": "1024x1536" } }
+}
+```
+
+- `inputs` — fills `{{NAME}}` slots in the prompts. Names are `A-Z`, `0-9` and
+  `_` only. A slot left unfilled is **refused with 400 `WF_INPUT_MISSING`**
+  rather than sent to the model: `{{…}}` reaching a prompt generates nonsense
+  and still costs money. At most 64 inputs, 4000 characters each.
+- `images` — reference images for specific nodes, keyed by node id, replacing
+  whatever that node has attached **for this call only**. Each entry must be a
+  **data URL** whose payload is real base64; file paths and remote URLs are
+  rejected, since accepting them would let a caller read arbitrary files or turn
+  the server into a downloader, and a malformed payload is rejected here rather
+  than failing later with an opaque provider error. At most 8 images per node.
+  The target must be a node in this chain that actually generates something — a
+  merge node takes media from its incoming edges, not attachments, and is
+  refused.
+
+  Leaving `images` out does **not** mean no attachments: the run then uses the
+  ones the user attached in the Node Studio, which are stored server-side in the
+  `node_refs` table. They used to live only in that browser's local storage, so
+  changing an attachment on the canvas had no effect on an API run at all —
+  fixed. Attachments are managed through
+  `GET|PUT|DELETE /api/sessions/:id/node-refs[/:nodeId]`, which writes each image
+  as a file and keeps only its `/generated/...` URL in the table, so neither the
+  table nor the graph carries base64.
+
+### Outfit descriptions follow the flat lay
+
+An extraction node (`vaiTro: "trang-phuc"`) produces a flat lay, and the nodes
+that use it as a **reference** carry a `She wears: … . Use the reference image`
+block naming the garments. The text is what decides what gets worn — a reference
+image alone keeps detail but does not dictate the outfit — so a stale block is
+enough to dress the model in the previous outfit no matter which flat lay is
+attached. That is exactly what happened: the flat lay was a new cardigan set
+while two downstream nodes still described a mountain-print shirt, and the run
+produced the shirt.
+
+So after an extraction node finishes, the run re-reads its fresh flat lay
+(through `/api/prompt-builder/chat`) and rewrites that block in **every node
+downstream of it that carries one**, not just the nodes holding a reference edge
+to it. The block is copied down the chain: a scene node takes the dressed model
+as its base image and has no edge back to the extraction node at all, so
+rewriting only direct reference users left the scene wearing the previous shirt
+on the new silhouette. The rewrite applies **for that run only** — the template keeps its own text and is
+re-read from scratch next time. The flat lay is also attached to the
+reference channel of the nodes that hold a reference edge to it — not to every
+downstream node, since a scene node's base is already the dressed model. That
+attachment happens whether or not the description succeeds: the
+attachment costs no model call and is what holds motif counts and pattern
+direction. A failed description logs `wf.outfit_describe_failed` and the run
+continues with the existing text rather than discarding the steps already paid
+for.
+
+A video node inherits the **scene node's** prompt as its own description, so the
+rewrite has to be visible through that inheritance too: the run reads every
+node's effective prompt — the stored one with this run's overrides applied on
+top — not the one stored in the graph. Reading the parent straight from the graph
+is what made a run produce three correct images followed by a video in the
+previous outfit.
+
+That makes a `nodes` override on a video node **additive, not replacing**: the
+prompt sent is the parent's effective text, a space, then the override. The
+override stands in for the node's own line, which is the part a video node holds
+anyway — replacing the whole thing would silently throw away the scene it is
+animating. A video node with nothing of its own sends the parent's text alone,
+and one wired to nothing sends only its own. `inputs` are substituted after the
+two halves are joined, so a `{{SLOT}}` works in either.
+
+### Image size follows the base
+
+A node with no `size` of its own takes the size of the **base image it is
+editing**, walking up the chain until one is found. Only when nothing in the
+chain sets a size does the request go out without the field, leaving the server
+default (`1024x1024`) in place.
+
+Without that, a run mixed aspect ratios in one pass: nodes generated by hand in
+the canvas carry the size the panel had selected (say `1152x2048`), while nodes
+added later carry none — and a workflow running on the server has no panel to
+read, so those fell back to the square default even though every one of them was
+editing the same portrait base.
+
+The full precedence is: the node's own `size`, then the base it is editing, then
+a `size` set on the **START marker** — the ratio for the whole workflow — and
+only then the server default. The canvas offers that picker on the START node
+and resolves a single node's GEN the same way, so pressing GEN on one node and
+running the whole workflow land on the same ratio.
+
+A `nodes` override may set `size` too, and an override on a parent carries down
+the chain for that call, same as its prompt.
+
+### An extraction node with no photo
+
+A `trang-phuc` (extraction) node with no image going in — no attachment, no
+`images` entry, no incoming image edge — makes the model **invent** an outfit,
+and every node behind it dresses in that invention. The run still goes ahead:
+leaving it empty on purpose is how you ask for an invented outfit.
+
+What it does instead is **warn**. The run carries
+
+```json
+{ "canhBao": [{ "code": "WF_REF_MISSING", "nodeId": "…", "message": "…" }] }
+```
+
+at the top level of the response and inside the stored run, and the canvas shows
+an amber note on the node. Warnings are persisted with the run, so an old run
+still says what conditions it ran under.
+
+This is easiest to hit right after copying a template: a template deliberately
+carries no attachments (that is what keeps data URLs out of the database), so a
+fresh copy has an empty extraction node and nothing would otherwise say so.
+
+### The outfit slot
+
+The description goes into a `{{TRANG_PHUC}}` slot, and that is the path to write
+prompts against:
+
+```text
+He wears: {{TRANG_PHUC}}. Use the reference image for the garments.
+```
+
+A slot is plain text substitution, so the prompt can say anything around it —
+`She wears:`, `He wears:`, `Outfit:`, or a sentence in Vietnamese. A run fills
+it for every node downstream of the extraction node, so those nodes do **not**
+ask the caller for `TRANG_PHUC`: it is left out of the `inputs` list a describe
+call returns, and a run without it is accepted. A `{{TRANG_PHUC}}` on a node
+that is *not* downstream of an extraction node is still a caller input and still
+refused with `WF_INPUT_MISSING` — nothing would fill it.
+
+Passing `inputs.TRANG_PHUC` **overrides** the reading, on both paths: the caller
+said what to wear, and overwriting that would ignore their instruction silently.
+
+In the canvas there is no extraction step behind a single GEN, so the extraction
+node stores the sentence it read on itself (`data.moTaTrangPhuc`) and any node
+behind it fills `{{TRANG_PHUC}}` from there at generate time. It is kept *beside*
+the prompt rather than written into it: a prompt carrying a literal outfit is how
+a stale outfit came back after the garment had already been changed. A node whose
+only unfilled slot is `TRANG_PHUC` and which has no extraction node behind it
+says so instead of refusing with a generic "slot not filled".
+
+The older shape — rewriting the block between `She wears: ` and `. Use the
+reference image` — still works for prompts written before the slot existed, and
+now keeps whichever subject the prompt used instead of forcing `She`. Prefer the
+slot: a pattern that hardcodes English and one gender misses a male subject, and
+a miss here is silent — the model simply wears the old outfit.
+
+None of this asks the user to wire every node to the extraction node. A scene or
+video node takes the dressed model as its base and has no business holding the
+flat lay as an image; forcing an edge there would only dilute its input, and it
+would not fix the video at all, since a video takes its parent's *text*.
+
+### What a video node animates
+
+A video node's *image* input is whatever its parent produced **in this run**, not
+the copy sitting in the graph or the template — every step re-reads the graph, so
+the step that just finished is what the next one sees.
+
+| Parent | Sent as | Provider mode |
+|---|---|---|
+| an image node | `sourceFilename` — the parent's generated file | `image-to-video` (first frame) |
+| a video node | `continueFromVideo` — the parent clip; the server extracts its last frame | `image-to-video`, continuing the lineage |
+| nothing | the node's own attachments, if any | `reference-to-video`, else `text-to-video` |
+
+The server does **one of the two**, never both: a first frame or a reference
+list. So when a base exists it wins, and an attachment on the video node is left
+for a run that has no base — sending both would drop the first frame, and the
+video would come back with a different person in different light.
+
+A video node carries its own settings in `data.caiDatVideo`, which the run uses
+in place of the defaults:
+
+```json
+{ "aspectRatio": "9:16", "resolution": "720p", "duration": 8, "anhNen": "khung-dau" }
+```
+
+Every field is optional; an absent one keeps the server default (`auto`, `480p`,
+`5s`). `anhNen` chooses what the base image is for — `khung-dau` (the default)
+locks it as the first frame, `tham-chieu` sends it as a reference instead, for a
+shot that should not start on that exact frame. An API run reads these from the
+graph: nobody is sitting at the panel to pick them, and the defaults are almost
+never the aspect ratio the workflow wants.
+- `nodes` — replaces a node's content for **this call only**, keyed by node id.
+  Only `prompt`, `size` and `model` can be set: allowing `vaiTro` or edges would
+  let one API call redraw a workflow the user shaped by hand on the canvas. The
+  graph is never modified, so calling a hundred times with a hundred different
+  prompts still leaves one template behind — the same rule as `inputs` and
+  `images`. An override is checked against the
+  effective prompt, so one that removes a `{{SLOT}}` needs no input for it, and
+  one that introduces a new slot is refused like any other missing input.
+
+Three ways to call it:
+
+| Call | What comes back |
+|---|---|
+| `POST <path>` | waits, then the finished run (the default) |
+| `POST <path>?stream=1` | an SSE stream, one frame per step as it finishes |
+| `POST <path>?async=1` | `202` with `runId`, `statusUrl` and `streamUrl` |
+
+### Streaming
+
+`?stream=1` answers with `text/event-stream` and the same event names the UI
+listens to, so there is one vocabulary for both:
+
+```
+event: wf_start
+data: {"runId":"wfr_01M…","tong":2,"buoc":[{"nodeId":"nc_ve","viec":"anh"}]}
+
+event: wf_step
+data: {"runId":"wfr_01M…","nodeId":"nc_ve","trangThai":"xong","url":"/generated/n_6c34eeab.png","daXong":1,"tong":2}
+
+event: wf_end
+data: {"runId":"wfr_01M…","ok":true,"run":{…},"result":{…}}
+```
+
+Each step reports twice — once on `dang-chay`, once on `xong` with its media.
+`wf_end` carries the whole run and its result, so a streaming caller never needs
+a second request. The connection closes on `wf_end`; a `: ping` comment every
+15 s keeps proxies from cutting a long gap between steps, and a run that outlives
+the 10-minute ceiling gets a `wf_timeout` frame naming the `statusUrl` to poll
+instead of hanging forever.
+
+`GET /api/wf/runs/:runId/stream` attaches to a run already in progress — pair it
+with `?async=1`. A run that has already finished gets its `wf_end` immediately
+and the connection closes, rather than waiting for events that will never come.
+
+Disconnecting does **not** cancel the run, exactly as with `?async=1`: aborting a
+generation halfway costs the same and yields nothing. Use
+`POST /api/wf/runs/:runId/cancel` to actually stop it.
+
+```json
+{ "ok": true,
+  "run": { "id": "wfr_01M…", "trangThai": "xong", "buoc": [ … ] },
+  "result": {
+    "media": [{ "nodeId": "nc_canh", "url": "/generated/n_6c34eeab.png", "loai": "anh" }],
+    "nodes": { "nc_canh": { "url": "/generated/n_6c34eeab.png", "loai": "anh" } }
+  } }
+```
+
+`result.media` is what the END node collects; `result.nodes` carries every node
+that ran, for workflows where intermediate output matters too.
+
+### URLs follow the caller
+
+Every URL a workflow route returns — `buoc[].url`, `result.media[].url`,
+`result.nodes[*].url`, `statusUrl`, `streamUrl`, and the `url` beside a
+workflow's `path` — is **absolute, built from the origin of the request being
+answered**. Call from the LAN and the links point at the LAN address; call from
+the machine itself and they point at localhost. A fixed origin would hand a
+caller addresses it cannot reach.
+
+The `Host` header is safe to echo because the access layer has already rejected
+any host outside the serving origins (`LOCAL_HOST_REJECTED`) before a route runs.
+
+Absolute URLs exist **only in responses**. What is stored keeps the
+`/generated/...` path: a host belongs to a call, not to a file, and baking one in
+would make the whole history point at the wrong place the day the port or address
+changes. `statusUrl` and `streamUrl` are already complete — prefixing them with a
+base again yields nonsense. `path` is kept alongside `url` for callers that
+already build their own.
+
+Results are also written back into the session graph, so opening the Node Studio
+shows them on the nodes. Each write re-reads the newest graph and touches only
+the node that just ran, so a browser tab editing another node is not clobbered.
+
+A failing node **stops the run**: every node behind it consumes that node's
+image, so continuing would only spend money producing wrong results. The
+response carries the failing step and `error.nodeId`.
+
+### Run status and history
+
+Runs are stored in the `wf_runs` table, so they survive a restart and answer
+"what did that API call produce yesterday". Each row keeps the inputs it ran
+with, every step with its media, and the final result.
+
+- `GET /api/wf/runs` — newest first. Filters: `?sessionId=`, `?startNodeId=`,
+  `?status=` (`dang-chay` / `xong` / `hong` / `da-huy`), `?limit=` (max 200) and
+  `?before=` for paging. The response carries `total` and a `nextBefore` cursor.
+- `GET /api/wf/runs/:runId` — one run. `202` while it is still going, `200` when
+  finished. Add `?wait=1` to hold the connection until it ends.
+- `POST /api/wf/runs/:runId/cancel` — stop after the node that is currently
+  running. A generation already in flight is not interrupted: aborting halfway
+  still costs the same and yields nothing.
+- `DELETE /api/wf/runs/:runId` — drop one run from the history. A run that is
+  still going is refused with `409 WF_RUN_BUSY_OR_MISSING`: removing its record
+  while it keeps spending would lose the only way to follow it.
+
+The newest 500 runs are kept; older finished rows are pruned as new ones arrive.
+Rows are not tied to the session by a foreign key, so deleting a session leaves
+its run history intact — the files in `/generated` are still there.
+
+A run that was going when the server stopped is closed on the next start with
+`WF_SERVER_RESTARTED` and its unfinished steps marked `bo-qua`. The generation
+processes died with the server, so leaving the row as "running" would show a run
+that never ends. Recovery only touches runs that are not live in the current
+process, so it cannot disturb one that is genuinely running.
+
+### Watching a run from the UI
+
+Every run publishes to the shared `/api/events` stream under the fixed job id
+`wf`, with the run id inside the payload — the browser cannot know the id of a
+run some other system started, so a fixed channel is what makes it observable.
+
+| Event | Sent when |
+|---|---|
+| `wf_start` | the chain is resolved and the steps are known |
+| `wf_step` | a step starts, finishes (carrying its `url`) or fails |
+| `wf_end` | the run reaches `xong` / `hong` / `da-huy` |
+
+The Node Studio listens on that channel: the START marker shows `API run x/y`
+with a Stop button, the node being generated gets the running outline and
+overlay, and each finished image lands on its node as it is produced.
+
+The START marker's `API` panel also carries everything needed to call it: the
+endpoint, the input slots, that workflow's recent runs, and **every node in the
+chain with its current prompt** — the content lives on those nodes, not on the
+marker, so the panel prints them there rather than making the reader hunt for
+ids. `Copy curl` yields a body pre-filled with all of them; each node also has
+its own copy button for a body that overrides just that one.
+
+The **Runner** button in the Node Studio toolbar opens a wider view: every
+workflow on the server (with its endpoint, step count, or the reason it is not
+runnable) beside the recent runs. Each run row names the session it belongs to;
+expanding one shows the inputs it was called with, each step with its media, and
+any error. A workflow's runs can be isolated with `Only this`, and a run still
+going can be stopped from there.
+
+A run's results are written into its session's graph, so `Watch on canvas` on a
+run opens that session and the workflow is visible running on the nodes. Opening
+a session also asks the server which runs are still going in it, because the
+event stream only reports what happens from that moment on and events for a
+session that is not open are dropped — waiting for the next event would leave the
+node being generated unmarked. The START marker's own panel only knows its own history, and only
+while that session is open — the Runner is where a workflow triggered by another
+system while nobody was looking becomes visible.
+
+### Status codes
+
+| Code | Meaning |
+|---|---|
+| `WF_SESSION_NOT_FOUND` | 404 — no such session |
+| `WF_RUN_NOT_FOUND` | 404 — no such run |
+| `WF_CHAIN_KHONG_PHAI_MOC_DAU` | 400 — that node is not a START marker |
+| `WF_CHAIN_THIEU_KET_THUC` | 400 — no END marker downstream |
+| `WF_CHAIN_VONG_LAP` | 400 — the graph loops back on itself |
+| `WF_INPUT_MISSING` / `WF_INPUT_INVALID` | 400 — inputs missing or malformed |
+| `WF_IMAGE_INVALID` / `WF_IMAGE_NODE_UNKNOWN` | 400 — attached images malformed or aimed at a node that does not exist |
+| `WF_NODE_OVERRIDE_INVALID` / `WF_NODE_OVERRIDE_UNKNOWN` | 400 — override malformed, or aimed at a node outside this workflow / one that generates nothing |
+| `WF_CANCELED` | 409 — the run was canceled |
+| `WF_RUN_BUSY_OR_MISSING` | 409 — cannot delete a run that is still going |
+| `WF_SERVER_RESTARTED` | recorded on a run the server was killed in the middle of |
+| `WF_NODE_FAILED`, `WF_PROMPT_EMPTY`, `WF_PARENT_EMPTY`, `WF_MERGE_NEED_TWO`, `WF_NODE_TIMEOUT` | 500 — the run started but a node could not complete |
 
 ## Contract Discovery
 

@@ -43,6 +43,12 @@ import {
   runNodeBatchImpl,
 } from "./storeNodeGenImpl";
 import {
+  chayWorkflowImpl,
+  dungWorkflowImpl,
+  napWfApiDangChayImpl,
+  nhanSuKienWfImpl,
+} from "./storeWorkflowImpl";
+import {
   generateMultimodeImpl,
   runGenerateImpl,
 } from "./storeGenImpl";
@@ -62,6 +68,8 @@ import {
   addChildNodeAtImpl,
   duplicateBranchRootImpl,
   updateNodePromptImpl,
+  datVaiTroNodeImpl,
+  updateNodeDataImpl,
   deleteNodeImpl,
   deleteNodesImpl,
   disconnectEdgesImpl,
@@ -465,6 +473,12 @@ trashPending: null,
   nodeSelectionMode: false,
   nodeBatchRunning: false,
   nodeBatchStopping: false,
+  wfDangChay: null,
+  wfNodeHienTai: null,
+  wfDungLai: false,
+  wfDaXong: 0,
+  wfTongViec: 0,
+  wfApiChay: {},
   toggleNodeSelectionMode: () => toggleNodeSelectionModeImpl(set, get),
   selectAllGraphNodes: () => {
     set({ graphNodes: applySelectedNodeIds(get().graphNodes, get().graphNodes.map((n) => n.id)) });
@@ -501,6 +515,8 @@ addChildNode: (parentClientId) => addChildNodeImpl(parentClientId, set, get),
   addSiblingNode: (sourceClientId) => addSiblingNodeImpl(sourceClientId, set, get),
 
   updateNodePrompt: (clientId, prompt) => updateNodePromptImpl(clientId, prompt, set, get),
+  datVaiTroNode: (clientId, vaiTro) => datVaiTroNodeImpl(clientId, vaiTro, set, get),
+  updateNodeData: (clientId, patch) => updateNodeDataImpl(clientId, patch, set, get),
 addNodeReferences: async (clientId, files) => addNodeReferencesImpl(clientId, files, set, get),
 addNodeReferenceDataUrl: (clientId, dataUrl) => addNodeReferenceDataUrlImpl(clientId, dataUrl, set, get),
 addNodeReferenceFromUrl: async (clientId, src, filename) => addNodeReferenceFromUrlImpl(clientId, src, filename, set, get),
@@ -523,6 +539,16 @@ duplicateBranchRoot: (sourceClientId) => duplicateBranchRootImpl(sourceClientId,
   async runNodeBatch(mode) {
     await runNodeBatchImpl(mode, set, get);
   },
+
+  async chayWorkflow(startClientId) {
+    await chayWorkflowImpl(startClientId, set, get);
+  },
+
+  dungWorkflow: () => dungWorkflowImpl(set, get),
+
+  nhanSuKienWf: (suKien, duLieu) => nhanSuKienWfImpl(suKien, duLieu, set, get),
+
+  napWfApiDangChay: (sessionId) => napWfApiDangChayImpl(sessionId, set, get),
 
   deleteNode: (clientId) => deleteNodeImpl(clientId, set, get),
 deleteNodes: (clientIds) => deleteNodesImpl(clientIds, set, get),
@@ -568,8 +594,8 @@ addChildNodeAt: (parentClientId, position, sourceHandle) => addChildNodeAtImpl(p
   setVideoTopic: (videoTopic) => set({ videoTopic }),
   setVideoContinuityLineage: (videoContinuityLineage) => set({ videoContinuityLineage }),
   activeVideoRefCount: () => activeVideoRefCountImpl(get),
-  runVideoGenerate: async (nodeId) => {
-    await runVideoGenerateImpl(nodeId, set, get);
+  runVideoGenerate: async (nodeId, taThayThe) => {
+    await runVideoGenerateImpl(nodeId, set, get, taThayThe);
   },
   animateImage: async (filename, prompt) => {
     return animateImageImpl(filename, prompt, set, get);

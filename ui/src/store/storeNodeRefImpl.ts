@@ -76,6 +76,11 @@ export function addNodeReferenceDataUrlImpl(
       if (n.id !== clientId) return n;
       const refs = n.data.referenceImages ?? [];
       if (refs.length >= get().referenceLimit) return n;
+      // Dinh dung mot anh hai lan la khong them gi, chi ton mot o tham chieu.
+      // Buoc doc bo do chay lai moi lan sinh node BOC DO, nen khong chan o day
+      // thi moi lan chay lai la moi node phia sau co them mot anh giong het -
+      // dung canh "node nao cung mot dong anh" da xay ra.
+      if (refs.includes(dataUrl)) return n;
       const nextRefs = [...refs, dataUrl];
       saveNodeRefs(get().activeSessionId, clientId, nextRefs);
       return { ...n, data: { ...n.data, referenceImages: nextRefs } };
